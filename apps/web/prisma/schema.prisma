@@ -1,0 +1,208 @@
+// Esquema de datos - Apex Fruit SPA
+// Sistema interno de inspección y control de calidad de fruta de exportación
+// (manzana, uva de mesa, cereza, arándano - Región del Maule)
+//
+// Motor local: SQLite (sin dependencias externas). Para producción, cambiar
+// el provider del datasource (ver README) a postgresql/mysql y actualizar
+// DATABASE_URL en prisma.config.ts / variables de entorno.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios y roles
+// ---------------------------------------------------------------------------
+
+enum RolUsuario {
+  ADMINISTRADOR
+  INSPECTOR
+}
+
+// Estructura base para autenticación. Por ahora no hay lógica de login real
+// (ver src/lib/auth.ts, es un stub) pero el modelo ya soporta credenciales
+// hasheadas para cuando se implemente.
+model Usuario {
+  id            String     @id @default(cuid())
+  nombre        String
+  email         String     @unique
+  passwordHash  String?
+  rol           RolUsuario @default(INSPECTOR)
+  activo        Boolean    @default(true)
+  telefono      String?
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
+
+  inspecciones Inspeccion[]
+
+  @@map("usuarios")
+}
+
+// ---------------------------------------------------------------------------
+// Clientes / exportadoras
+// ---------------------------------------------------------------------------
+
+model Cliente {
+  id            String   @id @default(cuid())
+  nombre        String
+  rut           String?  @unique
+  contacto      String?
+  email         String?
+  telefono      String?
+  direccion     String?
+  notas         String?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  lotes Lote[]
+
+  @@map("clientes")
+}
+
+// ---------------------------------------------------------------------------
+// Lotes / partidas de fruta
+// ---------------------------------------------------------------------------
+
+enum EspecieFruta {
+  MANZANA
+  UVA_DE_MESA
+  CEREZA
+  ARANDANO
+  PERA
+  KIWI
+  CIRUELA
+  OTRO
+}
+
+model Lote {
+  id                String       @id @default(cuid())
+  codigo            String       @unique // folio/código interno de partida
+  especie           EspecieFruta
+  variedad          String // ej: Gala, Fuji, Lapins, Santina, Duke, Thompson Seedless
+  productor         String // nombre del huerto/productor
+  ubicacionPacking  String // packing / centro de acopio donde se inspecciona
+  temporada         String // ej: "2025-2026"
+  fechaCosecha      DateTime?
+  fechaIngreso      DateTime     @default(now())
+  cajasTotales      Int?
+  kgTotales         Float?
+  calibrePredominante String?
+  destino           String? // mercado/país de destino
+  notas             String?
+  creadoEn          DateTime     @default(now())
+  actualizadoEn     DateTime     @updatedAt
+
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+
+  inspecciones Inspeccion[]
+
+  @@index([clienteId])
+  @@index([especie])
+  @@map("lotes")
+}
+
+// ---------------------------------------------------------------------------
+// Inspecciones de calidad
+// ---------------------------------------------------------------------------
+
+enum ResultadoInspeccion {
+  APROBADO
+  APROBADO_CON_OBSERVACIONES
+  RECHAZADO
+}
+
+model Inspeccion {
+  id        String   @id @default(cuid())
+  fecha     DateTime @default(now())
+
+  // Parámetros de calidad
+  calibre        String? // ej: "70-75mm", "J", "XL"
+  color          String? // ej: "80% cubrimiento rojo"
+  firmezaKgF     Float? // firmeza en kg-fuerza (penetrómetro)
+  brixGrados     Float? // sólidos solubles (°Brix)
+  acidez         Float? // g ácido málico/cítrico por 100ml (opcional)
+  pesoMuestraKg  Float?
+  muestraCajas   Int? // n° de cajas muestreadas
+  muestraUnidades Int? // n° de unidades/frutos muestreados
+
+  porcentajeRechazo Float? // % de rechazo total de la muestra
+  resultado         ResultadoInspeccion @default(APROBADO)
+  observaciones     String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  loteId String
+  lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+
+  inspectorId String
+  inspector   Usuario @relation(fields: [inspectorId], references: [id])
+
+  defectos Defecto[]
+  fotos    Foto[]
+
+  @@index([loteId])
+  @@index([inspectorId])
+  @@index([fecha])
+  @@map("inspecciones")
+}
+
+// ---------------------------------------------------------------------------
+// Defectos detectados en una inspección
+// ---------------------------------------------------------------------------
+
+enum TipoDefecto {
+  PUDRICION
+  MAGULLADURA
+  RUSSET
+  PARTIDURA_CRACKING
+  DEFORME
+  MANCHA
+  DANO_INSECTO
+  INMADURO
+  SOBREMADURO
+  DANO_GRANIZO
+  QUEMADURA_SOL
+  PEDICELO_SECO // uva/cereza
+  DESGRANE // uva
+  BLANDURA
+  OTRO
+}
+
+model Defecto {
+  id         String      @id @default(cuid())
+  tipo       TipoDefecto
+  cantidad   Int? // n° de unidades afectadas en la muestra
+  porcentaje Float? // % sobre la muestra
+  esCritico  Boolean     @default(false) // defecto de rechazo directo
+  notas      String?
+
+  inspeccionId String
+  inspeccion   Inspeccion @relation(fields: [inspeccionId], references: [id], onDelete: Cascade)
+
+  @@index([inspeccionId])
+  @@map("defectos")
+}
+
+// ---------------------------------------------------------------------------
+// Fotos asociadas a una inspección
+// ---------------------------------------------------------------------------
+
+model Foto {
+  id           String   @id @default(cuid())
+  url          String // ruta local (/uploads/..) o URL externa
+  descripcion  String?
+  subidaEn     DateTime @default(now())
+
+  inspeccionId String
+  inspeccion   Inspeccion @relation(fields: [inspeccionId], references: [id], onDelete: Cascade)
+
+  @@index([inspeccionId])
+  @@map("fotos")
+}
