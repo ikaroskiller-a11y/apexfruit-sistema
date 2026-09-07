@@ -5,10 +5,10 @@ import type { ReactNode } from "react";
 import TopBar from "@/components/TopBar";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EspecieTag } from "@/components/ui/EspecieTag";
 import { prisma } from "@/lib/prisma";
 import {
-  especieLabels,
-  resultadoBadgeClasses,
+  resultadoStatusMap,
   resultadoLabels,
   tipoDefectoLabels,
 } from "@/lib/labels";
@@ -41,21 +41,21 @@ export default async function InspeccionDetallePage({
           <div>
             <Link
               href="/inspecciones"
-              className="text-sm text-brand-700 hover:underline"
+              className="text-sm text-brand-700 hover:underline dark:text-brand-500"
             >
               ← Volver a inspecciones
             </Link>
-            <h2 className="mt-1 text-lg font-semibold text-brand-950">
+            <h2 className="mt-1 text-2xl leading-[30px] font-semibold text-fg">
               {formatFechaHora(inspeccion.fecha)} · {inspeccion.inspector.nombre}
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <Badge className={resultadoBadgeClasses[inspeccion.resultado]}>
+            <Badge status={resultadoStatusMap[inspeccion.resultado]}>
               {resultadoLabels[inspeccion.resultado]}
             </Badge>
             <Link
               href={`/inspecciones/${inspeccion.id}/reporte`}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-800"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-cream shadow-sm transition-colors hover:bg-brand-800"
             >
               Ver reporte / PDF
             </Link>
@@ -66,10 +66,15 @@ export default async function InspeccionDetallePage({
           <Card>
             <CardTitle>Lote</CardTitle>
             <dl className="space-y-2 text-sm">
-              <Row label="Código" value={inspeccion.lote.codigo} />
+              <Row label="Código" value={inspeccion.lote.codigo} mono />
               <Row
                 label="Especie / Variedad"
-                value={`${especieLabels[inspeccion.lote.especie]} · ${inspeccion.lote.variedad}`}
+                value={
+                  <EspecieTag
+                    especie={inspeccion.lote.especie}
+                    variedad={inspeccion.lote.variedad}
+                  />
+                }
               />
               <Row label="Productor" value={inspeccion.lote.productor} />
               <Row label="Packing" value={inspeccion.lote.ubicacionPacking} />
@@ -78,7 +83,7 @@ export default async function InspeccionDetallePage({
                 value={
                   <Link
                     href={`/clientes/${inspeccion.lote.clienteId}`}
-                    className="text-brand-700 hover:underline"
+                    className="text-brand-700 hover:underline dark:text-brand-500"
                   >
                     {inspeccion.lote.cliente.nombre}
                   </Link>
@@ -91,15 +96,17 @@ export default async function InspeccionDetallePage({
           <Card>
             <CardTitle>Parámetros de calidad</CardTitle>
             <dl className="space-y-2 text-sm">
-              <Row label="Calibre" value={inspeccion.calibre ?? "—"} />
+              <Row label="Calibre" value={inspeccion.calibre ?? "—"} mono />
               <Row label="Color" value={inspeccion.color ?? "—"} />
               <Row
                 label="Firmeza"
                 value={inspeccion.firmezaKgF ? `${inspeccion.firmezaKgF} kgF` : "—"}
+                mono
               />
               <Row
                 label="°Brix"
                 value={inspeccion.brixGrados ? `${inspeccion.brixGrados}°` : "—"}
+                mono
               />
               <Row
                 label="Muestra"
@@ -108,10 +115,12 @@ export default async function InspeccionDetallePage({
                     ? `${inspeccion.muestraUnidades} unidades (${inspeccion.muestraCajas ?? "—"} cajas)`
                     : "—"
                 }
+                mono
               />
               <Row
                 label="% Rechazo"
                 value={formatPorcentaje(inspeccion.porcentajeRechazo)}
+                mono
               />
             </dl>
           </Card>
@@ -119,23 +128,23 @@ export default async function InspeccionDetallePage({
           <Card>
             <CardTitle>Defectos detectados</CardTitle>
             {inspeccion.defectos.length === 0 ? (
-              <p className="text-sm text-ink/50">Sin defectos registrados.</p>
+              <p className="text-sm text-fg-muted">Sin defectos registrados.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {inspeccion.defectos.map((d) => (
                   <li
                     key={d.id}
-                    className="flex items-center justify-between border-b border-brand-950/5 pb-2 last:border-0"
+                    className="flex items-center justify-between border-b border-border pb-2 last:border-0"
                   >
                     <span>
                       {tipoDefectoLabels[d.tipo]}
                       {d.esCritico ? (
-                        <Badge className="ml-2 bg-red-100 text-red-700">
-                          crítico
+                        <Badge status="danger" className="ml-2">
+                          Crítico
                         </Badge>
                       ) : null}
                     </span>
-                    <span className="text-ink/60">
+                    <span className="font-mono tabular-nums text-fg-muted">
                       {d.porcentaje ? `${d.porcentaje.toFixed(1)}%` : ""}
                       {d.cantidad ? ` (${d.cantidad} un.)` : ""}
                     </span>
@@ -149,20 +158,20 @@ export default async function InspeccionDetallePage({
         {inspeccion.observaciones ? (
           <Card>
             <CardTitle>Observaciones</CardTitle>
-            <p className="text-sm text-ink/80">{inspeccion.observaciones}</p>
+            <p className="text-sm text-fg">{inspeccion.observaciones}</p>
           </Card>
         ) : null}
 
         <Card>
           <CardTitle>Fotos</CardTitle>
           {inspeccion.fotos.length === 0 ? (
-            <p className="text-sm text-ink/50">No se adjuntaron fotos.</p>
+            <p className="text-sm text-fg-muted">No se adjuntaron fotos.</p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {inspeccion.fotos.map((foto) => (
                 <div
                   key={foto.id}
-                  className="relative aspect-square overflow-hidden rounded-lg border border-brand-950/10 bg-brand-950/5"
+                  className="relative aspect-square overflow-hidden rounded-lg border border-border bg-card-alt"
                 >
                   <Image
                     src={foto.url}
@@ -181,11 +190,23 @@ export default async function InspeccionDetallePage({
   );
 }
 
-function Row({ label, value }: { label: string; value: ReactNode }) {
+function Row({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: ReactNode;
+  mono?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="text-ink/50">{label}</dt>
-      <dd className="text-right font-medium text-ink">{value}</dd>
+      <dt className="text-fg-muted">{label}</dt>
+      <dd
+        className={`text-right font-medium text-fg ${mono ? "font-mono tabular-nums" : ""}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

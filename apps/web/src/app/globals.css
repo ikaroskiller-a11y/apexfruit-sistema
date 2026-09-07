@@ -1,12 +1,26 @@
 @import "tailwindcss";
 
+/* Modo oscuro por clase: se activa agregando/quitando ".dark" en <html>.
+ * Ver ThemeToggle.tsx y el script inline en layout.tsx (evita parpadeo). */
+@custom-variant dark (&:is(.dark *));
+
 /*
- * Paleta de marca de Apex Fruit SPA.
- * Tomada del sitio público de la empresa. El diseño final/pulido lo entrega
- * otro workstream (docs/design); acá solo se usa para que la app se vea
- * consistente y prolija desde ya.
+ * Paleta de marca de Apex Fruit SPA + extensión del panel interno.
+ * Fuente de verdad de los valores: docs/design/guia-diseno.md
+ *
+ * Los tokens `--color-brand-*`, `--color-cream`, `--color-paper` y
+ * `--color-ink` son la identidad heredada del sitio público: no cambian
+ * entre modo claro/oscuro (el sidebar, por ejemplo, siempre usa
+ * `--color-brand-950` como fondo oscuro fijo, en ambos modos).
+ *
+ * Los tokens nuevos de esta sección (superficie/texto adaptables, estados
+ * de dato, paleta categórica de variedad y neutrales de UI) SÍ cambian de
+ * valor dentro de `.dark { ... }` — cualquier utilidad de Tailwind que los
+ * use (bg-surface, text-fg, bg-state-success-bg, etc.) se adapta sola sin
+ * necesitar el prefijo `dark:` en cada componente.
  */
 :root {
+  /* ---- 1.1 Base de marca (heredada, sin cambios) ---- */
   --color-brand-950: #0f2a20;
   --color-brand-800: #164735;
   --color-brand-700: #1f6b49;
@@ -21,6 +35,80 @@
 
   --background: var(--color-cream);
   --foreground: var(--color-ink);
+
+  /* ---- Superficie / texto adaptables (nuevo, cambia en .dark) ---- */
+  --color-surface: var(--color-cream); /* fondo de página */
+  --color-card: var(--color-paper); /* tarjetas, tablas */
+  --color-card-alt: #f0ece1; /* --surface-2: fila alterna */
+  --color-card-header: #e7e1d3; /* --surface-3: encabezado de tabla */
+  --color-fg: var(--color-ink); /* texto primario */
+  --color-fg-muted: #5d6b62; /* --muted: texto secundario */
+  --color-border: #dfe6dd; /* --line */
+  --color-disabled: #b7bdb2;
+  --color-focus-ring: #3e9b63;
+
+  /* ---- 1.2 Estados de dato ---- */
+  --color-state-success: #1f6b49;
+  --color-state-success-bg: #e4f0e9;
+  --color-state-warning: #b8790f;
+  --color-state-warning-bg: #faf0da;
+  --color-state-danger: #b3261e;
+  --color-state-danger-bg: #fbe6e3;
+  --color-state-info: #2f6f8f;
+  --color-state-info-bg: #e4eef2;
+
+  /* ---- 1.3 Paleta categórica por variedad ----
+   * Remapeada respecto de la tabla original de la guía: el demo pasó de
+   * arándano/uva de mesa a manzana/pera/kiwi/cereza (ver prisma/seed.ts).
+   * Se conservan los mismos hues ya validados contra daltonismo, solo
+   * cambia a qué fruta corresponde cada uno (kiwi toma el hue que antes
+   * era de arándano, pera toma el que antes era de uva de mesa). */
+  --color-variedad-manzana: #2f7a4f;
+  --color-variedad-pera: #7c5aa8;
+  --color-variedad-cereza: #c0392b;
+  --color-variedad-kiwi: #2e6da4;
+  /* Ciruela / Otro / variedades que hoy no están activas en el demo
+   * (arándano, uva de mesa): gris neutro de fallback, sin pisar un hue
+   * ya asignado a una variedad activa. */
+  --color-variedad-otro: #78716c;
+
+  /* Helpers de gráfico (no pasan por @theme, se usan directo como var() en
+   * props de recharts) */
+  --chart-grid: rgba(21, 33, 27, 0.12);
+  --chart-axis: rgba(21, 33, 27, 0.6);
+}
+
+.dark {
+  --background: #132420;
+  --foreground: #f3f0e6;
+
+  --color-surface: #132420; /* superficie oscura de referencia */
+  --color-card: #17302b; /* un paso más claro que la superficie para separar tarjetas */
+  --color-card-alt: #1c3a33;
+  --color-card-header: #204339;
+  --color-fg: #f3f0e6;
+  --color-fg-muted: #a9b8ae;
+  --color-border: #24382f;
+  --color-disabled: #47554c;
+  --color-focus-ring: #3e9b63;
+
+  --color-state-success: #3fa06a;
+  --color-state-success-bg: rgba(63, 160, 106, 0.18);
+  --color-state-warning: #e0a83f;
+  --color-state-warning-bg: rgba(224, 168, 63, 0.18);
+  --color-state-danger: #e2645a;
+  --color-state-danger-bg: rgba(226, 100, 90, 0.18);
+  --color-state-info: #5a9ec2;
+  --color-state-info-bg: rgba(90, 158, 194, 0.18);
+
+  --color-variedad-manzana: #3fa06a;
+  --color-variedad-pera: #9678c4;
+  --color-variedad-cereza: #e2643f;
+  --color-variedad-kiwi: #4a8bc9;
+  --color-variedad-otro: #a8a29e;
+
+  --chart-grid: rgba(243, 240, 230, 0.14);
+  --chart-axis: rgba(243, 240, 230, 0.55);
 }
 
 @theme inline {
@@ -37,8 +125,33 @@
   --color-paper: var(--color-paper);
   --color-ink: var(--color-ink);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--color-surface);
+  --color-card: var(--color-card);
+  --color-card-alt: var(--color-card-alt);
+  --color-card-header: var(--color-card-header);
+  --color-fg: var(--color-fg);
+  --color-fg-muted: var(--color-fg-muted);
+  --color-border: var(--color-border);
+  --color-disabled: var(--color-disabled);
+  --color-focus-ring: var(--color-focus-ring);
+
+  --color-state-success: var(--color-state-success);
+  --color-state-success-bg: var(--color-state-success-bg);
+  --color-state-warning: var(--color-state-warning);
+  --color-state-warning-bg: var(--color-state-warning-bg);
+  --color-state-danger: var(--color-state-danger);
+  --color-state-danger-bg: var(--color-state-danger-bg);
+  --color-state-info: var(--color-state-info);
+  --color-state-info-bg: var(--color-state-info-bg);
+
+  --color-variedad-manzana: var(--color-variedad-manzana);
+  --color-variedad-pera: var(--color-variedad-pera);
+  --color-variedad-cereza: var(--color-variedad-cereza);
+  --color-variedad-kiwi: var(--color-variedad-kiwi);
+  --color-variedad-otro: var(--color-variedad-otro);
+
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
 }
 
 body {
@@ -52,7 +165,9 @@ body {
   scrollbar-color: var(--color-brand-500) transparent;
 }
 
-/* Reporte técnico imprimible (ver /inspecciones/[id]/reporte) */
+/* Reporte técnico imprimible (ver /inspecciones/[id]/reporte).
+ * El reporte NUNCA usa modo oscuro: se fuerza fondo blanco/texto oscuro
+ * sin importar si el usuario tiene el toggle de tema en oscuro. */
 @media print {
   @page {
     size: A4;
@@ -60,6 +175,7 @@ body {
   }
 
   body {
-    background: #fff;
+    background: #fff !important;
+    color: #15211b !important;
   }
 }

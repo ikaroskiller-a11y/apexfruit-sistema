@@ -118,10 +118,10 @@ export default async function ReporteInspeccionPage({
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
             <Field label="Fecha de inspección" value={formatFechaHora(inspeccion.fecha)} />
             <Field label="Inspector responsable" value={inspeccion.inspector.nombre} />
-            <Field label="Calibre" value={inspeccion.calibre ?? "—"} />
+            <Field label="Calibre" value={inspeccion.calibre ?? "—"} mono />
             <Field label="Color" value={inspeccion.color ?? "—"} />
-            <Field label="Firmeza" value={inspeccion.firmezaKgF ? `${inspeccion.firmezaKgF} kgF` : "—"} />
-            <Field label="°Brix" value={inspeccion.brixGrados ? `${inspeccion.brixGrados}°` : "—"} />
+            <Field label="Firmeza" value={inspeccion.firmezaKgF ? `${inspeccion.firmezaKgF} kgF` : "—"} mono />
+            <Field label="°Brix" value={inspeccion.brixGrados ? `${inspeccion.brixGrados}°` : "—"} mono />
             <Field
               label="Tamaño de muestra"
               value={
@@ -129,8 +129,9 @@ export default async function ReporteInspeccionPage({
                   ? `${inspeccion.muestraUnidades} unidades (${inspeccion.muestraCajas ?? "—"} cajas)`
                   : "—"
               }
+              mono
             />
-            <Field label="Porcentaje de rechazo" value={formatPorcentaje(inspeccion.porcentajeRechazo)} />
+            <Field label="Porcentaje de rechazo" value={formatPorcentaje(inspeccion.porcentajeRechazo)} mono />
           </dl>
         </section>
 
@@ -153,8 +154,10 @@ export default async function ReporteInspeccionPage({
                 {inspeccion.defectos.map((d) => (
                   <tr key={d.id} className="border-b border-brand-950/5">
                     <td className="py-2 pr-3">{tipoDefectoLabels[d.tipo]}</td>
-                    <td className="py-2 pr-3">{d.porcentaje ? `${d.porcentaje.toFixed(1)}%` : "—"}</td>
-                    <td className="py-2 pr-3">{d.cantidad ?? "—"}</td>
+                    <td className="py-2 pr-3 font-mono">
+                      {d.porcentaje ? `${d.porcentaje.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="py-2 pr-3 font-mono">{d.cantidad ?? "—"}</td>
                     <td className="py-2">{d.esCritico ? "Sí" : "No"}</td>
                   </tr>
                 ))}
@@ -231,11 +234,19 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div>
       <dt className="text-[11px] uppercase tracking-wide text-ink/40">{label}</dt>
-      <dd className="font-medium text-ink">{value}</dd>
+      <dd className={`font-medium text-ink ${mono ? "font-mono" : ""}`}>{value}</dd>
     </div>
   );
 }

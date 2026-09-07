@@ -22,11 +22,17 @@ export const resultadoLabels: Record<ResultadoInspeccion, string> = {
   RECHAZADO: "Rechazado",
 };
 
-export const resultadoBadgeClasses: Record<ResultadoInspeccion, string> = {
-  APROBADO: "bg-brand-leaf/20 text-brand-800 ring-1 ring-inset ring-brand-leaf/40",
-  APROBADO_CON_OBSERVACIONES:
-    "bg-brand-gold/20 text-amber-900 ring-1 ring-inset ring-brand-gold/50",
-  RECHAZADO: "bg-red-100 text-red-800 ring-1 ring-inset ring-red-300",
+// Mapea el resultado de una inspección a uno de los 4 estados semánticos
+// del panel (guía de diseño §1.2). Se usa junto con <Badge status={...}>,
+// que agrega ícono + tinte de fondo — el estado nunca se comunica solo con
+// color ni solo con texto suelto.
+export const resultadoStatusMap: Record<
+  ResultadoInspeccion,
+  "success" | "warning" | "danger"
+> = {
+  APROBADO: "success",
+  APROBADO_CON_OBSERVACIONES: "warning",
+  RECHAZADO: "danger",
 };
 
 export const rolLabels: Record<RolUsuario, string> = {

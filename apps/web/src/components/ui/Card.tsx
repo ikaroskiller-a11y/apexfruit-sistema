@@ -9,7 +9,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-xl border border-brand-950/10 bg-white p-5 shadow-sm ${className}`}
+      className={`rounded-xl border border-border bg-card p-4 md:p-5 shadow-sm dark:shadow-none ${className}`}
     >
       {children}
     </div>
@@ -18,7 +18,7 @@ export function Card({
 
 export function CardTitle({ children }: { children: ReactNode }) {
   return (
-    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-brand-800">
+    <h2 className="mb-4 text-base leading-[22px] font-semibold text-fg">
       {children}
     </h2>
   );

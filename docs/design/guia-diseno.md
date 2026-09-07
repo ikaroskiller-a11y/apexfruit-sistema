@@ -57,12 +57,21 @@ Para comparar variedades en un mismo gráfico (líneas, barras agrupadas) se fij
 dashboard debe ver lo mismo en el detalle de lote. El orden es también la medida de
 seguridad ante daltonismo — no es cosmético, no se reordena por gráfico.
 
+**Nota (2026-09-07):** el demo del panel pasó de arándano/uva de mesa a
+manzana/pera/kiwi/cereza como las 4 frutas activas (ver `prisma/seed.ts`). Se
+remapea qué fruta usa cada hue sin tocar los hues en sí — son los mismos valores
+ya validados contra daltonismo, así que no hace falta revalidar. Kiwi toma el hue
+que antes tenía arándano; pera toma el que antes tenía uva de mesa. Manzana y
+cereza no cambian. Arándano/uva de mesa (inactivas hoy) y ciruela/otro usan el
+gris neutro de fallback (`--color-variedad-otro`) si vuelven a aparecer, para no
+pisar un hue ya asignado a una variedad activa.
+
 | Orden | Variedad | Light | Dark |
 |---|---|---|---|
-| 1 | Arándano | `#2e6da4` | `#4a8bc9` |
+| 1 | Kiwi | `#2e6da4` | `#4a8bc9` |
 | 2 | Manzana | `#2f7a4f` | `#3fa06a` |
 | 3 | Cereza | `#c0392b` | `#e2643f` |
-| 4 | Uva de mesa | `#7c5aa8` | `#9678c4` |
+| 4 | Pera | `#7c5aa8` | `#9678c4` |
 
 Validado en pares adyacentes (uso real: barras agrupadas y líneas, nunca dispersión
 libre) en ambos modos — pasa banda de luminosidad, piso de croma, piso de visión

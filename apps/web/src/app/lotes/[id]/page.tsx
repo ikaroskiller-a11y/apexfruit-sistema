@@ -4,12 +4,9 @@ import type { ReactNode } from "react";
 import TopBar from "@/components/TopBar";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EspecieTag } from "@/components/ui/EspecieTag";
 import { prisma } from "@/lib/prisma";
-import {
-  especieLabels,
-  resultadoBadgeClasses,
-  resultadoLabels,
-} from "@/lib/labels";
+import { resultadoStatusMap, resultadoLabels } from "@/lib/labels";
 import { formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 
 export default async function LoteDetallePage({
@@ -42,7 +39,7 @@ export default async function LoteDetallePage({
     <>
       <TopBar title={`Lote ${lote.codigo}`} />
       <main className="flex-1 space-y-6 px-4 py-6 md:px-8">
-        <Link href="/lotes" className="text-sm text-brand-700 hover:underline">
+        <Link href="/lotes" className="text-sm text-brand-700 hover:underline dark:text-brand-500">
           ← Volver a lotes
         </Link>
 
@@ -50,14 +47,17 @@ export default async function LoteDetallePage({
           <Card>
             <CardTitle>Datos del lote</CardTitle>
             <dl className="space-y-2 text-sm">
-              <Row label="Especie / Variedad" value={`${especieLabels[lote.especie]} · ${lote.variedad}`} />
+              <Row
+                label="Especie / Variedad"
+                value={<EspecieTag especie={lote.especie} variedad={lote.variedad} />}
+              />
               <Row label="Productor" value={lote.productor} />
               <Row label="Packing" value={lote.ubicacionPacking} />
               <Row label="Temporada" value={lote.temporada} />
               <Row
                 label="Cliente"
                 value={
-                  <Link href={`/clientes/${lote.clienteId}`} className="text-brand-700 hover:underline">
+                  <Link href={`/clientes/${lote.clienteId}`} className="text-brand-700 hover:underline dark:text-brand-500">
                     {lote.cliente.nombre}
                   </Link>
                 }
@@ -69,9 +69,9 @@ export default async function LoteDetallePage({
           <Card>
             <CardTitle>Volumen</CardTitle>
             <dl className="space-y-2 text-sm">
-              <Row label="Cajas totales" value={formatNumero(lote.cajasTotales, 0)} />
-              <Row label="Kg totales" value={formatNumero(lote.kgTotales, 0)} />
-              <Row label="Calibre predominante" value={lote.calibrePredominante ?? "—"} />
+              <Row label="Cajas totales" value={formatNumero(lote.cajasTotales, 0)} mono />
+              <Row label="Kg totales" value={formatNumero(lote.kgTotales, 0)} mono />
+              <Row label="Calibre predominante" value={lote.calibrePredominante ?? "—"} mono />
               <Row
                 label="Fecha de cosecha"
                 value={lote.fechaCosecha ? formatFecha(lote.fechaCosecha) : "—"}
@@ -83,8 +83,8 @@ export default async function LoteDetallePage({
           <Card>
             <CardTitle>Resumen de calidad</CardTitle>
             <dl className="space-y-2 text-sm">
-              <Row label="Inspecciones" value={String(lote.inspecciones.length)} />
-              <Row label="% Rechazo promedio" value={formatPorcentaje(promedio)} />
+              <Row label="Inspecciones" value={String(lote.inspecciones.length)} mono />
+              <Row label="% Rechazo promedio" value={formatPorcentaje(promedio)} mono />
             </dl>
             <Link
               href={`/inspecciones/nueva`}
@@ -95,44 +95,55 @@ export default async function LoteDetallePage({
           </Card>
         </div>
 
-        <Card className="!p-0">
-          <div className="border-b border-brand-950/10 px-5 py-4">
+        {/* Desktop / tablet: tabla con encabezado sticky */}
+        <Card className="hidden md:block !p-0">
+          <div className="border-b border-border px-5 py-4">
             <CardTitle>Historial de inspecciones</CardTitle>
           </div>
-          <div className="overflow-x-auto">
+          <div className="max-h-[60vh] overflow-auto">
             <table className="w-full min-w-[700px] text-left text-sm">
-              <thead className="bg-brand-950/5 text-xs uppercase tracking-wide text-brand-800">
+              <thead className="sticky top-0 z-10 bg-card-header text-xs uppercase tracking-wide text-fg-muted">
                 <tr>
-                  <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">Inspector</th>
-                  <th className="px-4 py-3">% Rechazo</th>
-                  <th className="px-4 py-3">Resultado</th>
-                  <th className="px-4 py-3" />
+                  <th className="px-4 py-2.5">Fecha</th>
+                  <th className="px-4 py-2.5">Inspector</th>
+                  <th className="px-4 py-2.5 text-right">% Rechazo</th>
+                  <th className="px-4 py-2.5">Resultado</th>
+                  <th className="px-4 py-2.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-950/10">
-                {lote.inspecciones.map((insp) => (
-                  <tr key={insp.id} className="hover:bg-brand-950/[0.03]">
-                    <td className="whitespace-nowrap px-4 py-3">{formatFecha(insp.fecha)}</td>
-                    <td className="whitespace-nowrap px-4 py-3">{insp.inspector.nombre}</td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      {formatPorcentaje(insp.porcentajeRechazo)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <Badge className={resultadoBadgeClasses[insp.resultado]}>
-                        {resultadoLabels[insp.resultado]}
-                      </Badge>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <Link href={`/inspecciones/${insp.id}`} className="text-brand-700 hover:underline">
-                        Ver
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-border">
+                {lote.inspecciones.map((insp) => {
+                  const critica = insp.resultado === "RECHAZADO";
+                  return (
+                    <tr
+                      key={insp.id}
+                      className={`h-10 odd:bg-card even:bg-card-alt hover:bg-surface ${
+                        critica
+                          ? "border-l-[3px] border-l-state-danger bg-state-danger-bg/40"
+                          : ""
+                      }`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-2.5">{formatFecha(insp.fecha)}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5">{insp.inspector.nombre}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-right font-mono tabular-nums">
+                        {formatPorcentaje(insp.porcentajeRechazo)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2.5">
+                        <Badge status={resultadoStatusMap[insp.resultado]}>
+                          {resultadoLabels[insp.resultado]}
+                        </Badge>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                        <Link href={`/inspecciones/${insp.id}`} className="text-brand-700 hover:underline dark:text-brand-500">
+                          Ver
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {lote.inspecciones.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-ink/50">
+                    <td colSpan={5} className="px-4 py-10 text-center text-fg-muted">
                       Este lote todavía no tiene inspecciones.
                     </td>
                   </tr>
@@ -141,16 +152,67 @@ export default async function LoteDetallePage({
             </table>
           </div>
         </Card>
+
+        {/* Mobile (<md): tarjetas apiladas */}
+        <div className="md:hidden">
+          <h3 className="mb-3 text-base leading-[22px] font-semibold text-fg">
+            Historial de inspecciones
+          </h3>
+          <div className="space-y-3">
+            {lote.inspecciones.map((insp) => {
+              const critica = insp.resultado === "RECHAZADO";
+              return (
+                <Link key={insp.id} href={`/inspecciones/${insp.id}`}>
+                  <Card
+                    className={`!p-4 ${
+                      critica
+                        ? "border-l-[3px] border-l-state-danger bg-state-danger-bg/40"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-fg">{formatFecha(insp.fecha)}</p>
+                        <p className="text-xs text-fg-muted">{insp.inspector.nombre}</p>
+                      </div>
+                      <Badge status={resultadoStatusMap[insp.resultado]}>
+                        {resultadoLabels[insp.resultado]}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-right font-mono text-sm tabular-nums text-fg">
+                      {formatPorcentaje(insp.porcentajeRechazo)}
+                    </p>
+                  </Card>
+                </Link>
+              );
+            })}
+            {lote.inspecciones.length === 0 ? (
+              <p className="px-2 py-6 text-center text-sm text-fg-muted">
+                Este lote todavía no tiene inspecciones.
+              </p>
+            ) : null}
+          </div>
+        </div>
       </main>
     </>
   );
 }
 
-function Row({ label, value }: { label: string; value: ReactNode }) {
+function Row({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: ReactNode;
+  mono?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="text-ink/50">{label}</dt>
-      <dd className="text-right font-medium text-ink">{value}</dd>
+      <dt className="text-fg-muted">{label}</dt>
+      <dd className={`text-right font-medium text-fg ${mono ? "font-mono tabular-nums" : ""}`}>
+        {value}
+      </dd>
     </div>
   );
 }

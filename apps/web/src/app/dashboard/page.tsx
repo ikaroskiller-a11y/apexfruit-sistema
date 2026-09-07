@@ -56,11 +56,10 @@ export default async function DashboardPage() {
 
           <Card>
             <CardTitle>Rechazo promedio por especie</CardTitle>
-            <ComparativaBarChart
-              data={porEspecie}
-              categoryKey="especie"
-              color="#1f6b49"
-            />
+            {/* % de rechazo por especie = severidad, no identidad de
+                variedad: usa el hue de estado (guía §1.3), color por
+                defecto del componente. */}
+            <ComparativaBarChart data={porEspecie} categoryKey="especie" />
           </Card>
 
           <Card>
@@ -68,7 +67,7 @@ export default async function DashboardPage() {
             <ComparativaBarChart
               data={porCliente}
               categoryKey="cliente"
-              color="#e7a93d"
+              color="var(--color-brand-gold)"
             />
           </Card>
         </div>

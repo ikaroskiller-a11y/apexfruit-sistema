@@ -23,9 +23,9 @@ export default async function NuevaInspeccionPage() {
       <main className="flex-1 px-4 py-6 md:px-8">
         <Card className="mx-auto max-w-4xl">
           {lotes.length === 0 ? (
-            <p className="text-sm text-ink/60">
+            <p className="text-sm text-fg-muted">
               Todavía no hay lotes registrados. Corre{" "}
-              <code className="rounded bg-brand-950/5 px-1">npm run db:seed</code>{" "}
+              <code className="rounded bg-card-alt px-1 font-mono">npm run db:seed</code>{" "}
               o crea un lote directamente en la base de datos para poder
               registrar inspecciones.
             </p>

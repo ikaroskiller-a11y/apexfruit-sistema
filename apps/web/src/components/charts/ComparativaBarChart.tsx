@@ -18,7 +18,7 @@ type Fila = {
 export default function ComparativaBarChart({
   data,
   categoryKey,
-  color = "#3e9b63",
+  color = "var(--color-state-danger)",
 }: {
   data: Fila[];
   categoryKey: string;
@@ -26,7 +26,7 @@ export default function ComparativaBarChart({
 }) {
   if (data.length === 0) {
     return (
-      <p className="text-sm text-ink/50">Todavía no hay datos suficientes.</p>
+      <p className="text-sm text-fg-muted">Todavía no hay datos suficientes.</p>
     );
   }
 
@@ -37,19 +37,29 @@ export default function ComparativaBarChart({
         layout="vertical"
         margin={{ top: 4, right: 24, left: 8, bottom: 4 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#15211b1a" horizontal={false} />
-        <XAxis type="number" unit="%" tick={{ fontSize: 11, fill: "#15211b99" }} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--chart-grid)"
+          horizontal={false}
+        />
+        <XAxis
+          type="number"
+          unit="%"
+          tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+        />
         <YAxis
           type="category"
           dataKey={categoryKey}
-          tick={{ fontSize: 11, fill: "#15211b99" }}
+          tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
           width={110}
         />
         <Tooltip
           formatter={(value) => [`${Number(value).toFixed(1)}%`, "Rechazo prom."]}
           contentStyle={{
             borderRadius: 8,
-            border: "1px solid #15211b1a",
+            border: "1px solid var(--color-border)",
+            background: "var(--color-card)",
+            color: "var(--color-fg)",
             fontSize: 12,
           }}
         />

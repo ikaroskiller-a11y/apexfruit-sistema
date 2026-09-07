@@ -19,7 +19,7 @@ export default function Sidebar() {
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-leaf text-brand-950 font-bold">
             AF
           </span>
-          <span className="text-lg font-semibold tracking-tight">
+          <span className="text-lg font-semibold tracking-tight text-cream">
             Apex Fruit
           </span>
         </Link>
@@ -35,7 +35,7 @@ export default function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`block rounded-lg px-3 py-2 text-sm font-medium tracking-tight transition-colors ${
                 active
                   ? "bg-brand-leaf text-brand-950"
                   : "text-cream/80 hover:bg-brand-800 hover:text-cream"

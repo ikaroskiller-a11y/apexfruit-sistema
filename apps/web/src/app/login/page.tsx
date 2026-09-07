@@ -14,7 +14,7 @@ export default function LoginPage() {
 
         <form className="space-y-4 opacity-60">
           <div>
-            <label className="mb-1 block text-xs font-medium text-brand-800">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.04em] text-brand-800">
               Correo
             </label>
             <input
@@ -25,7 +25,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-brand-800">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.04em] text-brand-800">
               Contraseña
             </label>
             <input
