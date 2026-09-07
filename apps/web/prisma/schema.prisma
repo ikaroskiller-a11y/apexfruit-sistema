@@ -79,6 +79,19 @@ enum EspecieFruta {
   OTRO
 }
 
+// Mercado de destino de exportación. De esto dependen exigencias reales
+// (firmeza mínima de kiwi, certificaciones, etc. — ver src/lib/normas.ts).
+enum MercadoDestino {
+  USA
+  EUROPA
+  JAPON
+  COREA
+  CHINA
+  INDIA
+  LATAM
+  OTRO
+}
+
 model Lote {
   id                String       @id @default(cuid())
   codigo            String       @unique // folio/código interno de partida
@@ -92,7 +105,7 @@ model Lote {
   cajasTotales      Int?
   kgTotales         Float?
   calibrePredominante String?
-  destino           String? // mercado/país de destino
+  mercadoDestino    MercadoDestino? // mercado de destino de exportación
   notas             String?
   creadoEn          DateTime     @default(now())
   actualizadoEn     DateTime     @updatedAt
@@ -111,10 +124,21 @@ model Lote {
 // Inspecciones de calidad
 // ---------------------------------------------------------------------------
 
+// Resultado final de la inspección, en la terminología real de 3 niveles
+// que usa Apex Fruit (no "aprobado/rechazado" genérico).
 enum ResultadoInspeccion {
-  APROBADO
-  APROBADO_CON_OBSERVACIONES
-  RECHAZADO
+  CATEGORIA_1
+  CATEGORIA_2
+  OBJETADO
+}
+
+// Unidad de medida de firmeza: cada especie usa un instrumento/unidad
+// distinta en la operación real (manzana/pera -> kgF con penetrómetro,
+// cereza -> grados Durofel, kiwi -> libras).
+enum FirmezaUnidad {
+  KGF
+  UD_DUROFEL
+  LBS
 }
 
 model Inspeccion {
@@ -122,17 +146,28 @@ model Inspeccion {
   fecha     DateTime @default(now())
 
   // Parámetros de calidad
-  calibre        String? // ej: "70-75mm", "J", "XL"
-  color          String? // ej: "80% cubrimiento rojo"
-  firmezaKgF     Float? // firmeza en kg-fuerza (penetrómetro)
+  calibre        String? // ej: "70-75mm", "J", "XL", "Pre" (cereza)
+  color          String? // descripción libre de color (manzana/pera/kiwi)
+  colorPorcentajeDark Int? // % Dark de la muestra (0-100, solo cereza)
+  colorPorcentajeLight Int? // % Light de la muestra (0-100, solo cereza)
+  firmeza        Float? // valor de firmeza en la unidad de firmezaUnidad
+  firmezaUnidad  FirmezaUnidad? // unidad del valor de `firmeza`
   brixGrados     Float? // sólidos solubles (°Brix)
   acidez         Float? // g ácido málico/cítrico por 100ml (opcional)
   pesoMuestraKg  Float?
   muestraCajas   Int? // n° de cajas muestreadas
   muestraUnidades Int? // n° de unidades/frutos muestreados
 
+  // Control de hidroenfriado (solo cereza) — sección propia de la plantilla
+  // real de campo. Ver Manual_Inspeccion_ApexFruit_FINAL (docs/research).
+  hidrocoolerTempAguaC             Float? // tolerancia real: 0-2°C
+  hidrocoolerCloroLibrePpm         Float? // tolerancia real: 100-120 ppm
+  hidrocoolerTiempoExposicionMin   Float? // tolerancia real: 3-5 min
+  hidrocoolerTempPulpaPostC        Float?
+  hidrocoolerEsperaMasDeUnaHora    Boolean? // true si esperó > 1h antes del hidrocooler
+
   porcentajeRechazo Float? // % de rechazo total de la muestra
-  resultado         ResultadoInspeccion @default(APROBADO)
+  resultado         ResultadoInspeccion @default(CATEGORIA_1)
   observaciones     String?
 
   creadoEn      DateTime @default(now())
@@ -157,20 +192,36 @@ model Inspeccion {
 // Defectos detectados en una inspección
 // ---------------------------------------------------------------------------
 
+// Catálogo real de defectos de cereza (plantilla de campo Apex Fruit):
+// 5 de CALIDAD + 10 de CONDICIÓN (ver categoriaDefecto en src/lib/normas.ts
+// para la clasificación y src/lib/labels.ts para las etiquetas). Los
+// valores al final del enum ya no representan defectos activos de las 4
+// especies del demo pero se mantienen para no romper referencias.
 enum TipoDefecto {
-  PUDRICION
-  MAGULLADURA
+  // --- CALIDAD (cereza) ---
   RUSSET
-  PARTIDURA_CRACKING
-  DEFORME
-  MANCHA
+  FUERA_DE_COLOR
+  AUSENCIA_PEDICELO
+  DEFORME // "Frutos deformes"
+  MANCHA // "Manchas"
+
+  // --- CONDICIÓN (cereza) ---
+  SOBREMADURO // "Sobremadurez"
+  PARTIDURA_CRACKING // "Partiduras"
+  HERIDA_ABIERTA
+  PUDRICION_HUMEDA
+  PUDRICION_SECA
+  PITTING
+  MAGULLADURA // "Machucón"
+  PEDICELO_SECO // "Pedicelo deshidratado"
+  MEDIALUNA // "Medialunas"
+  QUEMADURA_SOL // "Golpe de sol"
+
+  // --- otras especies / legado (no forman parte del catálogo de cereza) ---
   DANO_INSECTO
   INMADURO
-  SOBREMADURO
   DANO_GRANIZO
-  QUEMADURA_SOL
-  PEDICELO_SECO // uva/cereza
-  DESGRANE // uva
+  DESGRANE // uva de mesa
   BLANDURA
   OTRO
 }

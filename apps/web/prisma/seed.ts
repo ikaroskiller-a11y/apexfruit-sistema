@@ -4,6 +4,12 @@
  *
  * Pensado para que el dashboard y los listados no se vean vacíos apenas se
  * clona el proyecto. Los nombres de productores/clientes son ficticios.
+ *
+ * La lógica de tolerancia de cereza (evaluarResultadoCerezaSeed) refleja
+ * los mismos umbrales que src/lib/normas.ts (suma de condición > 12% o
+ * pudrición húmeda > 1% => Objetado). Se duplica aquí en vez de importarse
+ * para que este script siga siendo independiente de la resolución de
+ * path aliases de la app bajo `tsx`.
  */
 import {
   PrismaClient,
@@ -11,11 +17,13 @@ import {
   ResultadoInspeccion,
   TipoDefecto,
   RolUsuario,
+  MercadoDestino,
+  FirmezaUnidad,
 } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-function rand<T>(arr: T[]): T {
+function rand<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
@@ -25,6 +33,55 @@ function randFloat(min: number, max: number, decimals = 1) {
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// ---------------------------------------------------------------------------
+// Catálogo real de defectos de cereza (ver docs/research/material-existente.md
+// §2.1/2.2 y src/lib/normas.ts)
+// ---------------------------------------------------------------------------
+
+const cerezaDefectosCalidad: TipoDefecto[] = [
+  TipoDefecto.RUSSET,
+  TipoDefecto.FUERA_DE_COLOR,
+  TipoDefecto.AUSENCIA_PEDICELO,
+  TipoDefecto.DEFORME,
+  TipoDefecto.MANCHA,
+];
+
+const cerezaDefectosCondicion: TipoDefecto[] = [
+  TipoDefecto.SOBREMADURO,
+  TipoDefecto.PARTIDURA_CRACKING,
+  TipoDefecto.HERIDA_ABIERTA,
+  TipoDefecto.PUDRICION_HUMEDA,
+  TipoDefecto.PUDRICION_SECA,
+  TipoDefecto.PITTING,
+  TipoDefecto.MAGULLADURA,
+  TipoDefecto.PEDICELO_SECO,
+  TipoDefecto.MEDIALUNA,
+  TipoDefecto.QUEMADURA_SOL,
+];
+
+const cerezaDefectosTodos: TipoDefecto[] = [
+  ...cerezaDefectosCalidad,
+  ...cerezaDefectosCondicion,
+];
+
+const calibresCerezaSeed = ["Pre", "L", "XL", "J", "2J", "3J", "4J"] as const;
+
+/** Misma tolerancia de 3 niveles de src/lib/normas.ts#evaluarResultadoCereza. */
+function evaluarResultadoCerezaSeed(
+  defectos: { tipo: TipoDefecto; porcentaje: number }[]
+): ResultadoInspeccion {
+  const sumaCondicion = defectos
+    .filter((d) => cerezaDefectosCondicion.includes(d.tipo))
+    .reduce((acc, d) => acc + d.porcentaje, 0);
+  const pudricionHumeda = defectos
+    .filter((d) => d.tipo === TipoDefecto.PUDRICION_HUMEDA)
+    .reduce((acc, d) => acc + d.porcentaje, 0);
+
+  if (pudricionHumeda > 1 || sumaCondicion > 12) return ResultadoInspeccion.OBJETADO;
+  if (sumaCondicion > 6) return ResultadoInspeccion.CATEGORIA_2;
+  return ResultadoInspeccion.CATEGORIA_1;
 }
 
 async function main() {
@@ -120,7 +177,7 @@ async function main() {
   ];
 
   const temporadas = ["2024-2025", "2025-2026"];
-  const destinos = ["Estados Unidos", "Unión Europea", "China", "Brasil", "Reino Unido"];
+  const mercadosDestino = Object.values(MercadoDestino);
 
   const defectosPorEspecie: Record<EspecieFruta, TipoDefecto[]> = {
     [EspecieFruta.MANZANA]: [
@@ -132,18 +189,15 @@ async function main() {
     [EspecieFruta.UVA_DE_MESA]: [
       TipoDefecto.DESGRANE,
       TipoDefecto.PEDICELO_SECO,
-      TipoDefecto.PUDRICION,
+      TipoDefecto.PUDRICION_HUMEDA,
       TipoDefecto.PARTIDURA_CRACKING,
     ],
-    [EspecieFruta.CEREZA]: [
-      TipoDefecto.PARTIDURA_CRACKING,
-      TipoDefecto.BLANDURA,
-      TipoDefecto.PUDRICION,
-      TipoDefecto.PEDICELO_SECO,
-    ],
+    // Catálogo real completo (5 calidad + 10 condición) — ver
+    // docs/research/material-existente.md §2.1/2.2.
+    [EspecieFruta.CEREZA]: cerezaDefectosTodos,
     [EspecieFruta.ARANDANO]: [
       TipoDefecto.BLANDURA,
-      TipoDefecto.PUDRICION,
+      TipoDefecto.PUDRICION_HUMEDA,
       TipoDefecto.INMADURO,
       TipoDefecto.MANCHA,
     ],
@@ -155,6 +209,7 @@ async function main() {
 
   console.log("Creando lotes e inspecciones...");
   let codigoSeq = 1;
+  let primerCerezaObjetadaCreada = false;
 
   for (const temporada of temporadas) {
     const [anioInicio] = temporada.split("-").map(Number);
@@ -200,9 +255,9 @@ async function main() {
                 : especie === EspecieFruta.PERA
                   ? rand(["60-65mm", "65-70mm", "70-75mm"])
                   : especie === EspecieFruta.CEREZA
-                    ? rand(["26-28mm", "28-30mm", "30-32mm"])
+                    ? rand(calibresCerezaSeed)
                     : rand(["25", "27", "30", "33", "36"]), // kiwi: conteo por bandeja
-            destino: rand(destinos),
+            mercadoDestino: rand(mercadosDestino),
             clienteId: cliente.id,
           },
         });
@@ -216,13 +271,64 @@ async function main() {
               1000 * 60 * 60 * 24 * (j * randInt(3, 6) + randInt(0, 2))
           );
 
-          const porcentajeRechazo = randFloat(1.5, 18, 1);
-          const resultado: ResultadoInspeccion =
-            porcentajeRechazo > 12
-              ? ResultadoInspeccion.RECHAZADO
-              : porcentajeRechazo > 6
-                ? ResultadoInspeccion.APROBADO_CON_OBSERVACIONES
-                : ResultadoInspeccion.APROBADO;
+          const muestraUnidades = randInt(50, 200);
+          const muestraCajas = randInt(3, 12);
+
+          // --- Defectos: se generan ANTES de crear la inspección para
+          // poder calcular el resultado de cereza con la tolerancia real
+          // de 3 niveles a partir de los defectos efectivamente creados. ---
+          const defectosDisponibles = defectosPorEspecie[especie];
+          const nDefectosLocal = randInt(1, 3);
+          const usados = new Set<TipoDefecto>();
+          const defectosData: { tipo: TipoDefecto; porcentaje: number }[] = [];
+          for (let k = 0; k < nDefectosLocal; k++) {
+            const tipo = rand(defectosDisponibles);
+            if (usados.has(tipo)) continue;
+            usados.add(tipo);
+            defectosData.push({ tipo, porcentaje: randFloat(0.3, 6) });
+          }
+
+          // Garantiza al menos un ejemplo determinístico de cereza objetada
+          // (para poder verificar en /inspecciones/[id]/reporte que la
+          // banda roja y el texto de criterio de objeción se muestran bien).
+          if (especie === EspecieFruta.CEREZA && !primerCerezaObjetadaCreada) {
+            defectosData.length = 0;
+            defectosData.push(
+              { tipo: TipoDefecto.PUDRICION_HUMEDA, porcentaje: 1.8 },
+              { tipo: TipoDefecto.PARTIDURA_CRACKING, porcentaje: 3.2 },
+              { tipo: TipoDefecto.RUSSET, porcentaje: 2.0 }
+            );
+            primerCerezaObjetadaCreada = true;
+          }
+
+          let resultado: ResultadoInspeccion;
+          let porcentajeRechazo: number;
+          if (especie === EspecieFruta.CEREZA) {
+            resultado = evaluarResultadoCerezaSeed(defectosData);
+            porcentajeRechazo = Number(
+              defectosData.reduce((acc, d) => acc + d.porcentaje, 0).toFixed(1)
+            );
+          } else {
+            porcentajeRechazo = randFloat(1.5, 18, 1);
+            resultado =
+              porcentajeRechazo > 12
+                ? ResultadoInspeccion.OBJETADO
+                : porcentajeRechazo > 6
+                  ? ResultadoInspeccion.CATEGORIA_2
+                  : ResultadoInspeccion.CATEGORIA_1;
+          }
+
+          // Color Dark/Light (solo cereza) — Light es el complemento de Dark.
+          const colorDark =
+            especie === EspecieFruta.CEREZA ? randInt(60, 90) : undefined;
+          const colorLight =
+            colorDark !== undefined ? 100 - colorDark : undefined;
+
+          // Control de hidroenfriado (solo cereza). ~20% de las inspecciones
+          // queda deliberadamente fuera de tolerancia, para que el demo no
+          // se vea "todo perfecto".
+          const hidrocoolerFueraDeRango =
+            especie === EspecieFruta.CEREZA && Math.random() < 0.2;
 
           const inspeccion = await prisma.inspeccion.create({
             data: {
@@ -236,12 +342,24 @@ async function main() {
                     : especie === EspecieFruta.KIWI
                       ? rand(["Piel parda uniforme", "Piel parda con vello escaso"])
                       : rand(["Rojo intenso", "Rojo brillante", "Rojo oscuro"]), // cereza
-              firmezaKgF:
+              colorPorcentajeDark: colorDark,
+              colorPorcentajeLight: colorLight,
+              firmeza:
                 especie === EspecieFruta.MANZANA
                   ? randFloat(5.5, 8.5)
+                  : especie === EspecieFruta.PERA
+                    ? randFloat(5.0, 8.0)
+                    : especie === EspecieFruta.CEREZA
+                      ? randFloat(58, 88, 1) // grados Durofel (UD)
+                      : randFloat(4, 14, 1), // kiwi: libras
+              firmezaUnidad:
+                especie === EspecieFruta.MANZANA || especie === EspecieFruta.PERA
+                  ? FirmezaUnidad.KGF
                   : especie === EspecieFruta.CEREZA
-                    ? randFloat(250, 400, 0)
-                    : randFloat(1.2, 2.8), // pera/kiwi
+                    ? FirmezaUnidad.UD_DUROFEL
+                    : especie === EspecieFruta.KIWI
+                      ? FirmezaUnidad.LBS
+                      : undefined,
               brixGrados:
                 especie === EspecieFruta.CEREZA
                   ? randFloat(17, 24)
@@ -249,39 +367,52 @@ async function main() {
                     ? randFloat(9, 14)
                     : randFloat(11, 15), // manzana/pera
               pesoMuestraKg: randFloat(5, 20),
-              muestraCajas: randInt(3, 12),
-              muestraUnidades: randInt(50, 200),
+              muestraCajas,
+              muestraUnidades,
+              hidrocoolerTempAguaC:
+                especie === EspecieFruta.CEREZA
+                  ? hidrocoolerFueraDeRango
+                    ? randFloat(2.5, 4, 1)
+                    : randFloat(0, 2, 1)
+                  : undefined,
+              hidrocoolerCloroLibrePpm:
+                especie === EspecieFruta.CEREZA
+                  ? hidrocoolerFueraDeRango
+                    ? randFloat(60, 90, 0)
+                    : randFloat(100, 120, 0)
+                  : undefined,
+              hidrocoolerTiempoExposicionMin:
+                especie === EspecieFruta.CEREZA
+                  ? hidrocoolerFueraDeRango
+                    ? randFloat(5.5, 7, 1)
+                    : randFloat(3, 5, 1)
+                  : undefined,
+              hidrocoolerTempPulpaPostC:
+                especie === EspecieFruta.CEREZA ? randFloat(0, 4, 1) : undefined,
+              hidrocoolerEsperaMasDeUnaHora:
+                especie === EspecieFruta.CEREZA ? Math.random() < 0.15 : undefined,
               porcentajeRechazo,
               resultado,
               observaciones:
-                resultado === ResultadoInspeccion.RECHAZADO
+                resultado === ResultadoInspeccion.OBJETADO
                   ? "Lote no cumple estándar de exportación, se recomienda reproceso."
-                  : resultado === ResultadoInspeccion.APROBADO_CON_OBSERVACIONES
-                    ? "Aprobado, monitorear evolución de defectos en próxima inspección."
-                    : "Cumple estándar de exportación.",
+                  : resultado === ResultadoInspeccion.CATEGORIA_2
+                    ? "Categoría 2: monitorear evolución de defectos en próxima inspección."
+                    : "Cumple estándar de exportación (Categoría 1).",
               loteId: lote.id,
               inspectorId: inspector.id,
             },
           });
 
-          const defectosDisponibles = defectosPorEspecie[especie];
-          const nDefectos = randInt(1, 3);
-          const usados = new Set<TipoDefecto>();
-          for (let k = 0; k < nDefectos; k++) {
-            const tipo = rand(defectosDisponibles);
-            if (usados.has(tipo)) continue;
-            usados.add(tipo);
-            const porcentaje = randFloat(0.3, porcentajeRechazo / nDefectos + 2);
-            await prisma.defecto.create({
-              data: {
-                tipo,
-                porcentaje,
-                cantidad: Math.round(
-                  ((inspeccion.muestraUnidades ?? 100) * porcentaje) / 100
-                ),
-                esCritico: tipo === TipoDefecto.PUDRICION,
+          if (defectosData.length > 0) {
+            await prisma.defecto.createMany({
+              data: defectosData.map((d) => ({
+                tipo: d.tipo,
+                porcentaje: d.porcentaje,
+                cantidad: Math.round((muestraUnidades * d.porcentaje) / 100),
+                esCritico: d.tipo === TipoDefecto.PUDRICION_HUMEDA,
                 inspeccionId: inspeccion.id,
-              },
+              })),
             });
           }
         }

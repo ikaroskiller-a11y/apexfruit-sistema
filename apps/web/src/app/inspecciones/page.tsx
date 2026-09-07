@@ -141,7 +141,7 @@ export default async function InspeccionesPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {inspecciones.map((insp) => {
-                  const critica = insp.resultado === "RECHAZADO";
+                  const critica = insp.resultado === "OBJETADO";
                   return (
                     <tr
                       key={insp.id}
@@ -203,7 +203,7 @@ export default async function InspeccionesPage({
         {/* Mobile (<md): tarjetas apiladas en vez de tabla con scroll horizontal */}
         <div className="space-y-3 md:hidden">
           {inspecciones.map((insp) => {
-            const critica = insp.resultado === "RECHAZADO";
+            const critica = insp.resultado === "OBJETADO";
             return (
               <Link key={insp.id} href={`/inspecciones/${insp.id}`}>
                 <Card

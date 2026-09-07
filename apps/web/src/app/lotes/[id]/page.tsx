@@ -6,7 +6,7 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EspecieTag } from "@/components/ui/EspecieTag";
 import { prisma } from "@/lib/prisma";
-import { resultadoStatusMap, resultadoLabels } from "@/lib/labels";
+import { resultadoStatusMap, resultadoLabels, mercadoDestinoLabels } from "@/lib/labels";
 import { formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 
 export default async function LoteDetallePage({
@@ -62,7 +62,10 @@ export default async function LoteDetallePage({
                   </Link>
                 }
               />
-              <Row label="Destino" value={lote.destino ?? "—"} />
+              <Row
+                label="Mercado destino"
+                value={lote.mercadoDestino ? mercadoDestinoLabels[lote.mercadoDestino] : "—"}
+              />
             </dl>
           </Card>
 
@@ -113,7 +116,7 @@ export default async function LoteDetallePage({
               </thead>
               <tbody className="divide-y divide-border">
                 {lote.inspecciones.map((insp) => {
-                  const critica = insp.resultado === "RECHAZADO";
+                  const critica = insp.resultado === "OBJETADO";
                   return (
                     <tr
                       key={insp.id}
@@ -160,7 +163,7 @@ export default async function LoteDetallePage({
           </h3>
           <div className="space-y-3">
             {lote.inspecciones.map((insp) => {
-              const critica = insp.resultado === "RECHAZADO";
+              const critica = insp.resultado === "OBJETADO";
               return (
                 <Link key={insp.id} href={`/inspecciones/${insp.id}`}>
                   <Card

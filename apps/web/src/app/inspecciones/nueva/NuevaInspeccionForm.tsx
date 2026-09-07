@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { crearInspeccion } from "./actions";
-import { especieLabels, resultadoOptions, tipoDefectoOptions } from "@/lib/labels";
+import {
+  especieLabels,
+  resultadoOptions,
+  tipoDefectoOptions,
+  calibresCereza,
+  calibresCerezaPremiumAsia,
+} from "@/lib/labels";
 import { Field, inputClass } from "@/components/ui/FormField";
 import type { EspecieFruta } from "@prisma/client";
 
@@ -27,12 +33,34 @@ export default function NuevaInspeccionForm({
   inspectores: InspectorOpcion[];
 }) {
   const [nDefectos, setNDefectos] = useState(1);
+  const [loteId, setLoteId] = useState("");
+
+  const especieSeleccionada = useMemo(
+    () => lotes.find((l) => l.id === loteId)?.especie,
+    [lotes, loteId]
+  );
+  const esCereza = especieSeleccionada === "CEREZA";
+
+  const firmezaLabel =
+    especieSeleccionada === "CEREZA"
+      ? "Firmeza (UD Durofel)"
+      : especieSeleccionada === "KIWI"
+        ? "Firmeza (lb)"
+        : especieSeleccionada === "MANZANA" || especieSeleccionada === "PERA"
+          ? "Firmeza (kgF)"
+          : "Firmeza";
 
   return (
     <form action={crearInspeccion} className="space-y-8">
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Lote" required>
-          <select name="loteId" required className={`${inputClass} font-mono`}>
+          <select
+            name="loteId"
+            required
+            value={loteId}
+            onChange={(e) => setLoteId(e.target.value)}
+            className={`${inputClass} font-mono`}
+          >
             <option value="">Selecciona un lote…</option>
             {lotes.map((l) => (
               <option key={l.id} value={l.id}>
@@ -64,13 +92,19 @@ export default function NuevaInspeccionForm({
         </Field>
 
         <Field label="Resultado">
-          <select name="resultado" defaultValue="APROBADO" className={inputClass}>
+          <select name="resultado" defaultValue="CATEGORIA_1" className={inputClass}>
             {resultadoOptions.map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
           </select>
+          {esCereza ? (
+            <p className="mt-1 text-xs text-fg-muted">
+              Para cereza, el resultado se recalcula automáticamente según el
+              catálogo de defectos de condición (ver sección de defectos).
+            </p>
+          ) : null}
         </Field>
       </section>
 
@@ -80,21 +114,55 @@ export default function NuevaInspeccionForm({
         </h3>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           <Field label="Calibre">
-            <input
-              type="text"
-              name="calibre"
-              placeholder="70-75mm"
-              className={`${inputClass} font-mono`}
-            />
+            {esCereza ? (
+              <select name="calibre" defaultValue="" className={`${inputClass} font-mono`}>
+                <option value="">Selecciona…</option>
+                {calibresCereza.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                    {calibresCerezaPremiumAsia.has(c) ? " · Premium Asia" : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                name="calibre"
+                placeholder="70-75mm"
+                className={`${inputClass} font-mono`}
+              />
+            )}
           </Field>
           <Field label="Color">
             <input type="text" name="color" placeholder="80% cubrimiento" className={inputClass} />
           </Field>
-          <Field label="Firmeza (kgF)">
+          {esCereza ? (
+            <>
+              <Field label="% Dark">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  name="colorPorcentajeDark"
+                  className={`${inputClass} font-mono tabular-nums`}
+                />
+              </Field>
+              <Field label="% Light">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  name="colorPorcentajeLight"
+                  className={`${inputClass} font-mono tabular-nums`}
+                />
+              </Field>
+            </>
+          ) : null}
+          <Field label={firmezaLabel}>
             <input
               type="number"
               step="0.1"
-              name="firmezaKgF"
+              name="firmeza"
               className={`${inputClass} font-mono tabular-nums`}
             />
           </Field>
@@ -147,6 +215,58 @@ export default function NuevaInspeccionForm({
         </div>
       </section>
 
+      {esCereza ? (
+        <section>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
+            Control de hidroenfriado
+          </h3>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <Field label="T° agua (°C)">
+              <input
+                type="number"
+                step="0.1"
+                name="hidrocoolerTempAguaC"
+                placeholder="0-2"
+                className={`${inputClass} font-mono tabular-nums`}
+              />
+            </Field>
+            <Field label="Cloro libre (ppm)">
+              <input
+                type="number"
+                step="1"
+                name="hidrocoolerCloroLibrePpm"
+                placeholder="100-120"
+                className={`${inputClass} font-mono tabular-nums`}
+              />
+            </Field>
+            <Field label="Tiempo exposición (min)">
+              <input
+                type="number"
+                step="0.1"
+                name="hidrocoolerTiempoExposicionMin"
+                placeholder="3-5"
+                className={`${inputClass} font-mono tabular-nums`}
+              />
+            </Field>
+            <Field label="T° pulpa post (°C)">
+              <input
+                type="number"
+                step="0.1"
+                name="hidrocoolerTempPulpaPostC"
+                className={`${inputClass} font-mono tabular-nums`}
+              />
+            </Field>
+            <Field label="Espera > 1h antes del hidrocooler">
+              <select name="hidrocoolerEsperaMasDeUnaHora" defaultValue="" className={inputClass}>
+                <option value="">Sin especificar</option>
+                <option value="true">Sí</option>
+                <option value="false">No</option>
+              </select>
+            </Field>
+          </div>
+        </section>
+      ) : null}
+
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
@@ -154,7 +274,7 @@ export default function NuevaInspeccionForm({
           </h3>
           <button
             type="button"
-            onClick={() => setNDefectos((n) => Math.min(n + 1, 6))}
+            onClick={() => setNDefectos((n) => Math.min(n + 1, 10))}
             className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-500"
           >
             + Agregar defecto

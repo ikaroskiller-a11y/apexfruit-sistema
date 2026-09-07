@@ -6,16 +6,40 @@ import {
   especieLabels,
   resultadoLabels,
   tipoDefectoLabels,
+  firmezaUnidadLabels,
+  mercadoDestinoLabels,
 } from "@/lib/labels";
 import { formatFecha, formatFechaHora, formatPorcentaje } from "@/lib/format";
 import { PrintReportButton } from "@/components/PrintReportButton";
+import {
+  avisoFirmezaKiwi,
+  categoriaDefecto,
+  clasificarFirmezaCereza,
+  criterioObjecionCereza,
+} from "@/lib/normas";
+import type { ResultadoInspeccion } from "@prisma/client";
 
-const resultadoTexto: Record<string, string> = {
-  APROBADO: "El lote cumple el estándar de exportación definido para esta inspección.",
-  APROBADO_CON_OBSERVACIONES:
+const resultadoTexto: Record<ResultadoInspeccion, string> = {
+  CATEGORIA_1: "El lote cumple el estándar de exportación definido para esta inspección.",
+  CATEGORIA_2:
     "El lote cumple el estándar, con observaciones que se deben monitorear en la próxima inspección.",
-  RECHAZADO:
+  OBJETADO:
     "El lote no cumple el estándar de exportación. Se recomienda reproceso antes de continuar.",
+};
+
+// Banda de estado grande con color (guía: sección 3 del reporte real de
+// Apex Fruit) — verde/ámbar/rojo según el resultado de 3 niveles.
+//
+// El reporte NUNCA debe cambiar de aspecto con el modo oscuro del panel
+// (ver globals.css): por eso usamos los mismos hex fijos de "estado" del
+// modo claro en vez de los tokens `state-*`, que sí se remapean en `.dark`.
+const resultadoBanda: Record<
+  ResultadoInspeccion,
+  { bg: string; fg: string; border: string }
+> = {
+  CATEGORIA_1: { bg: "bg-[#e4f0e9]", fg: "text-[#1f6b49]", border: "border-[#1f6b49]/30" },
+  CATEGORIA_2: { bg: "bg-[#faf0da]", fg: "text-[#b8790f]", border: "border-[#b8790f]/30" },
+  OBJETADO: { bg: "bg-[#fbe6e3]", fg: "text-[#b3261e]", border: "border-[#b3261e]/30" },
 };
 
 export default async function ReporteInspeccionPage({
@@ -41,6 +65,25 @@ export default async function ReporteInspeccionPage({
     (acc, d) => acc + (d.cantidad ?? 0),
     0
   );
+
+  const esCereza = inspeccion.lote.especie === "CEREZA";
+  const esKiwi = inspeccion.lote.especie === "KIWI";
+  const firmezaCereza =
+    esCereza && inspeccion.firmeza ? clasificarFirmezaCereza(inspeccion.firmeza) : null;
+  const avisoKiwi = esKiwi
+    ? avisoFirmezaKiwi(inspeccion.lote.mercadoDestino, inspeccion.firmeza)
+    : null;
+  const criterioObjecion =
+    inspeccion.resultado === "OBJETADO" ? criterioObjecionCereza(inspeccion.defectos) : null;
+
+  // Umbral de pudrición húmeda que gatilla objeción por sí solo (>1%), para
+  // resaltar en rojo la fila específica que causó la objeción.
+  const sumaCondicion = inspeccion.defectos
+    .filter((d) => categoriaDefecto[d.tipo] === "CONDICION")
+    .reduce((acc, d) => acc + (d.porcentaje ?? 0), 0);
+  const condicionExcedeMaximo = sumaCondicion > 12;
+
+  const banda = resultadoBanda[inspeccion.resultado];
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">
@@ -87,18 +130,30 @@ export default async function ReporteInspeccionPage({
           </div>
         </header>
 
-        {/* Resultado */}
-        <section className="mt-5 flex items-center justify-between rounded-lg bg-cream px-4 py-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-ink/50">Resultado</p>
-            <p className="text-base font-semibold text-brand-950">
-              {resultadoLabels[inspeccion.resultado]}
-            </p>
-          </div>
-          <p className="max-w-sm text-right text-xs text-ink/70">
+        {/* Banda de estado grande con color */}
+        <section
+          className={`mt-5 rounded-lg border px-5 py-4 ${banda.bg} ${banda.border}`}
+        >
+          <p className={`text-xs font-semibold uppercase tracking-wide ${banda.fg}`}>
+            Resultado de la inspección
+          </p>
+          <p className={`mt-1 text-2xl font-bold leading-tight ${banda.fg}`}>
+            {resultadoLabels[inspeccion.resultado]}
+          </p>
+          <p className="mt-1 max-w-xl text-xs text-ink/70">
             {resultadoTexto[inspeccion.resultado]}
           </p>
         </section>
+
+        {/* Criterio de objeción, solo si el resultado es Objetado */}
+        {criterioObjecion ? (
+          <section className="mt-3 rounded-lg border border-[#b3261e]/30 bg-[#fbe6e3] px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#b3261e]">
+              Criterio de objeción aplicado
+            </p>
+            <p className="mt-1 text-sm text-ink/80">{criterioObjecion}</p>
+          </section>
+        ) : null}
 
         {/* Datos del lote */}
         <section className="mt-6">
@@ -109,7 +164,14 @@ export default async function ReporteInspeccionPage({
             <Field label="Packing" value={inspeccion.lote.ubicacionPacking} />
             <Field label="Cliente / Exportadora" value={inspeccion.lote.cliente.nombre} />
             <Field label="Temporada" value={inspeccion.lote.temporada} />
-            <Field label="Destino" value={inspeccion.lote.destino ?? "—"} />
+            <Field
+              label="Mercado destino"
+              value={
+                inspeccion.lote.mercadoDestino
+                  ? mercadoDestinoLabels[inspeccion.lote.mercadoDestino]
+                  : "—"
+              }
+            />
             <Field
               label="Fecha de cosecha"
               value={inspeccion.lote.fechaCosecha ? formatFecha(inspeccion.lote.fechaCosecha) : "—"}
@@ -126,7 +188,35 @@ export default async function ReporteInspeccionPage({
             <Field label="Inspector responsable" value={inspeccion.inspector.nombre} />
             <Field label="Calibre" value={inspeccion.calibre ?? "—"} mono />
             <Field label="Color" value={inspeccion.color ?? "—"} />
-            <Field label="Firmeza" value={inspeccion.firmezaKgF ? `${inspeccion.firmezaKgF} kgF` : "—"} mono />
+            {esCereza ? (
+              <Field
+                label="% Dark / % Light"
+                value={
+                  inspeccion.colorPorcentajeDark !== null || inspeccion.colorPorcentajeLight !== null
+                    ? `${inspeccion.colorPorcentajeDark ?? "—"}% / ${inspeccion.colorPorcentajeLight ?? "—"}%`
+                    : "—"
+                }
+                mono
+              />
+            ) : null}
+            <Field
+              label="Firmeza"
+              value={
+                inspeccion.firmeza
+                  ? `${inspeccion.firmeza} ${inspeccion.firmezaUnidad ? firmezaUnidadLabels[inspeccion.firmezaUnidad] : ""}`
+                  : "—"
+              }
+              mono
+            />
+            {firmezaCereza ? (
+              <Field
+                label="Clasificación / embarque"
+                value={`${firmezaCereza.clasificacion} · ${firmezaCereza.embarqueRecomendado}`}
+              />
+            ) : null}
+            {avisoKiwi ? (
+              <Field label="Aviso de firmeza" value={avisoKiwi} />
+            ) : null}
             <Field label="°Brix" value={inspeccion.brixGrados ? `${inspeccion.brixGrados}°` : "—"} mono />
             <Field
               label="Tamaño de muestra"
@@ -141,6 +231,58 @@ export default async function ReporteInspeccionPage({
           </dl>
         </section>
 
+        {/* Control de hidroenfriado (cereza) */}
+        {esCereza ? (
+          <section className="mt-6">
+            <SectionTitle>Control de hidroenfriado</SectionTitle>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+              <Field
+                label="T° agua"
+                value={inspeccion.hidrocoolerTempAguaC !== null ? `${inspeccion.hidrocoolerTempAguaC}°C` : "—"}
+                mono
+              />
+              <Field
+                label="Cloro libre"
+                value={
+                  inspeccion.hidrocoolerCloroLibrePpm !== null
+                    ? `${inspeccion.hidrocoolerCloroLibrePpm} ppm`
+                    : "—"
+                }
+                mono
+              />
+              <Field
+                label="Tiempo de exposición"
+                value={
+                  inspeccion.hidrocoolerTiempoExposicionMin !== null
+                    ? `${inspeccion.hidrocoolerTiempoExposicionMin} min`
+                    : "—"
+                }
+                mono
+              />
+              <Field
+                label="T° pulpa post-hidrocooler"
+                value={
+                  inspeccion.hidrocoolerTempPulpaPostC !== null
+                    ? `${inspeccion.hidrocoolerTempPulpaPostC}°C`
+                    : "—"
+                }
+                mono
+              />
+              <Field
+                label="Espera > 1h antes del hidrocooler"
+                value={
+                  inspeccion.hidrocoolerEsperaMasDeUnaHora === null ||
+                  inspeccion.hidrocoolerEsperaMasDeUnaHora === undefined
+                    ? "—"
+                    : inspeccion.hidrocoolerEsperaMasDeUnaHora
+                      ? "Sí"
+                      : "No"
+                }
+              />
+            </dl>
+          </section>
+        ) : null}
+
         {/* Defectos */}
         <section className="mt-6">
           <SectionTitle>Defectos registrados</SectionTitle>
@@ -151,27 +293,48 @@ export default async function ReporteInspeccionPage({
               <thead>
                 <tr className="border-b border-brand-950/10 text-left text-xs uppercase tracking-wide text-ink/50">
                   <th className="py-2 pr-3 font-medium">Tipo de defecto</th>
+                  <th className="py-2 pr-3 font-medium">Categoría</th>
                   <th className="py-2 pr-3 font-medium">% de la muestra</th>
                   <th className="py-2 pr-3 font-medium">Unidades</th>
                   <th className="py-2 font-medium">Crítico</th>
                 </tr>
               </thead>
               <tbody>
-                {inspeccion.defectos.map((d) => (
-                  <tr key={d.id} className="border-b border-brand-950/5">
-                    <td className="py-2 pr-3">{tipoDefectoLabels[d.tipo]}</td>
-                    <td className="py-2 pr-3 font-mono">
-                      {d.porcentaje ? `${d.porcentaje.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="py-2 pr-3 font-mono">{d.cantidad ?? "—"}</td>
-                    <td className="py-2">{d.esCritico ? "Sí" : "No"}</td>
-                  </tr>
-                ))}
+                {inspeccion.defectos.map((d) => {
+                  // Resalta en rojo la(s) fila(s) que gatillan la objeción:
+                  // pudrición húmeda > 1% sola, o cualquier defecto de
+                  // condición cuando la suma total supera el 12%.
+                  const esPudricionHumedaCritica =
+                    d.tipo === "PUDRICION_HUMEDA" && (d.porcentaje ?? 0) > 1;
+                  const esCondicionYExcede =
+                    categoriaDefecto[d.tipo] === "CONDICION" && condicionExcedeMaximo;
+                  const filaCritica = esPudricionHumedaCritica || esCondicionYExcede;
+
+                  return (
+                    <tr
+                      key={d.id}
+                      className={`border-b border-brand-950/5 ${
+                        filaCritica ? "bg-[#fbe6e3] text-[#b3261e]" : ""
+                      }`}
+                    >
+                      <td className="py-2 pr-3 font-medium">{tipoDefectoLabels[d.tipo]}</td>
+                      <td className="py-2 pr-3 text-ink/60">
+                        {categoriaDefecto[d.tipo] === "CALIDAD" ? "Calidad" : "Condición"}
+                      </td>
+                      <td className="py-2 pr-3 font-mono">
+                        {d.porcentaje ? `${d.porcentaje.toFixed(1)}%` : "—"}
+                      </td>
+                      <td className="py-2 pr-3 font-mono">{d.cantidad ?? "—"}</td>
+                      <td className="py-2">{d.esCritico ? "Sí" : "No"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr>
-                  <td className="pt-2 text-xs text-ink/50" colSpan={4}>
-                    Total de unidades con defecto en la muestra: {totalDefectos}
+                  <td className="pt-2 text-xs text-ink/50" colSpan={5}>
+                    Total de unidades con defecto en la muestra: {totalDefectos} · Suma de
+                    defectos de condición: {sumaCondicion.toFixed(1)}%
                   </td>
                 </tr>
               </tfoot>
@@ -210,17 +373,23 @@ export default async function ReporteInspeccionPage({
           </section>
         ) : null}
 
-        {/* Firma */}
-        <section className="mt-10 grid grid-cols-2 gap-8 break-inside-avoid text-sm">
+        {/* Firmas */}
+        <section className="mt-10 grid grid-cols-1 gap-8 break-inside-avoid text-sm sm:grid-cols-3">
           <div>
             <div className="h-12 border-b border-ink/30" />
             <p className="mt-1 text-xs text-ink/60">
-              Firma inspector responsable · {inspeccion.inspector.nombre}
+              Inspector Apex Fruit · {inspeccion.inspector.nombre}
             </p>
           </div>
           <div>
             <div className="h-12 border-b border-ink/30" />
-            <p className="mt-1 text-xs text-ink/60">Timbre / visto bueno Apex Fruit</p>
+            <p className="mt-1 text-xs text-ink/60">Jefe de Calidad</p>
+          </div>
+          <div>
+            <div className="h-12 border-b border-ink/30" />
+            <p className="mt-1 text-xs text-ink/60">
+              Representante {inspeccion.lote.cliente.nombre}
+            </p>
           </div>
         </section>
 

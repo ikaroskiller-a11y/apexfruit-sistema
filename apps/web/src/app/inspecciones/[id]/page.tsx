@@ -11,8 +11,15 @@ import {
   resultadoStatusMap,
   resultadoLabels,
   tipoDefectoLabels,
+  firmezaUnidadLabels,
+  mercadoDestinoLabels,
 } from "@/lib/labels";
 import { formatFechaHora, formatPorcentaje } from "@/lib/format";
+import {
+  avisoFirmezaKiwi,
+  clasificarFirmezaCereza,
+  criterioObjecionCereza,
+} from "@/lib/normas";
 
 export default async function InspeccionDetallePage({
   params,
@@ -32,6 +39,18 @@ export default async function InspeccionDetallePage({
   });
 
   if (!inspeccion) notFound();
+
+  const esCereza = inspeccion.lote.especie === "CEREZA";
+  const esKiwi = inspeccion.lote.especie === "KIWI";
+  const firmezaCereza =
+    esCereza && inspeccion.firmeza ? clasificarFirmezaCereza(inspeccion.firmeza) : null;
+  const avisoKiwi = esKiwi
+    ? avisoFirmezaKiwi(inspeccion.lote.mercadoDestino, inspeccion.firmeza)
+    : null;
+  const criterioObjecion =
+    esCereza && inspeccion.resultado === "OBJETADO"
+      ? criterioObjecionCereza(inspeccion.defectos)
+      : null;
 
   return (
     <>
@@ -90,6 +109,14 @@ export default async function InspeccionDetallePage({
                 }
               />
               <Row label="Temporada" value={inspeccion.lote.temporada} />
+              <Row
+                label="Mercado destino"
+                value={
+                  inspeccion.lote.mercadoDestino
+                    ? mercadoDestinoLabels[inspeccion.lote.mercadoDestino]
+                    : "—"
+                }
+              />
             </dl>
           </Card>
 
@@ -98,11 +125,35 @@ export default async function InspeccionDetallePage({
             <dl className="space-y-2 text-sm">
               <Row label="Calibre" value={inspeccion.calibre ?? "—"} mono />
               <Row label="Color" value={inspeccion.color ?? "—"} />
+              {esCereza ? (
+                <Row
+                  label="% Dark / % Light"
+                  value={
+                    inspeccion.colorPorcentajeDark !== null || inspeccion.colorPorcentajeLight !== null
+                      ? `${inspeccion.colorPorcentajeDark ?? "—"}% / ${inspeccion.colorPorcentajeLight ?? "—"}%`
+                      : "—"
+                  }
+                  mono
+                />
+              ) : null}
               <Row
                 label="Firmeza"
-                value={inspeccion.firmezaKgF ? `${inspeccion.firmezaKgF} kgF` : "—"}
+                value={
+                  inspeccion.firmeza
+                    ? `${inspeccion.firmeza} ${inspeccion.firmezaUnidad ? firmezaUnidadLabels[inspeccion.firmezaUnidad] : ""}`
+                    : "—"
+                }
                 mono
               />
+              {esCereza && inspeccion.firmeza ? (
+                <Row
+                  label="Clasificación firmeza"
+                  value={`${firmezaCereza!.clasificacion} · ${firmezaCereza!.embarqueRecomendado}`}
+                />
+              ) : null}
+              {avisoKiwi ? (
+                <Row label="Firmeza" value={<Badge status="warning">{avisoKiwi}</Badge>} />
+              ) : null}
               <Row
                 label="°Brix"
                 value={inspeccion.brixGrados ? `${inspeccion.brixGrados}°` : "—"}
@@ -154,6 +205,64 @@ export default async function InspeccionDetallePage({
             )}
           </Card>
         </div>
+
+        {esCereza ? (
+          <Card>
+            <CardTitle>Control de hidroenfriado</CardTitle>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+              <Row
+                label="T° agua"
+                value={inspeccion.hidrocoolerTempAguaC !== null ? `${inspeccion.hidrocoolerTempAguaC}°C` : "—"}
+                mono
+              />
+              <Row
+                label="Cloro libre"
+                value={
+                  inspeccion.hidrocoolerCloroLibrePpm !== null
+                    ? `${inspeccion.hidrocoolerCloroLibrePpm} ppm`
+                    : "—"
+                }
+                mono
+              />
+              <Row
+                label="Tiempo de exposición"
+                value={
+                  inspeccion.hidrocoolerTiempoExposicionMin !== null
+                    ? `${inspeccion.hidrocoolerTiempoExposicionMin} min`
+                    : "—"
+                }
+                mono
+              />
+              <Row
+                label="T° pulpa post-hidrocooler"
+                value={
+                  inspeccion.hidrocoolerTempPulpaPostC !== null
+                    ? `${inspeccion.hidrocoolerTempPulpaPostC}°C`
+                    : "—"
+                }
+                mono
+              />
+              <Row
+                label="Espera > 1h antes del hidrocooler"
+                value={
+                  inspeccion.hidrocoolerEsperaMasDeUnaHora === null ||
+                  inspeccion.hidrocoolerEsperaMasDeUnaHora === undefined
+                    ? "—"
+                    : inspeccion.hidrocoolerEsperaMasDeUnaHora
+                      ? "Sí"
+                      : "No"
+                }
+              />
+            </dl>
+          </Card>
+        ) : null}
+
+        {criterioObjecion ? (
+          <Card className="border-state-danger/30 bg-state-danger-bg/40">
+            <CardTitle>Criterio de objeción aplicado</CardTitle>
+            <p className="text-sm text-fg">{criterioObjecion}</p>
+          </Card>
+        ) : null}
 
         {inspeccion.observaciones ? (
           <Card>
