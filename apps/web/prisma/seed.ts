@@ -98,9 +98,9 @@ async function main() {
 
   const especiesActivas: EspecieFruta[] = [
     EspecieFruta.MANZANA,
-    EspecieFruta.UVA_DE_MESA,
+    EspecieFruta.PERA,
+    EspecieFruta.KIWI,
     EspecieFruta.CEREZA,
-    EspecieFruta.ARANDANO,
   ];
 
   const productores = [
@@ -169,11 +169,9 @@ async function main() {
         const mesCosecha =
           especie === EspecieFruta.CEREZA
             ? randInt(10, 12) // oct-dic
-            : especie === EspecieFruta.ARANDANO
-              ? randInt(11, 12)
-              : especie === EspecieFruta.UVA_DE_MESA
-                ? randInt(1, 3)
-                : randInt(2, 4); // manzana/pera feb-abr
+            : especie === EspecieFruta.KIWI
+              ? randInt(4, 5) // abr-may
+              : randInt(2, 4); // manzana/pera feb-abr
           const anioCosecha =
             mesCosecha >= 10 ? anioInicio : anioInicio + 1;
 
@@ -199,11 +197,11 @@ async function main() {
             calibrePredominante:
               especie === EspecieFruta.MANZANA
                 ? rand(["70-75mm", "75-80mm", "80-85mm"])
-                : especie === EspecieFruta.UVA_DE_MESA
-                  ? rand(["JJ", "J", "XJ"])
+                : especie === EspecieFruta.PERA
+                  ? rand(["60-65mm", "65-70mm", "70-75mm"])
                   : especie === EspecieFruta.CEREZA
                     ? rand(["26-28mm", "28-30mm", "30-32mm"])
-                    : rand(["Small", "Medium", "Large"]),
+                    : rand(["25", "27", "30", "33", "36"]), // kiwi: conteo por bandeja
             destino: rand(destinos),
             clienteId: cliente.id,
           },
@@ -233,23 +231,23 @@ async function main() {
               color:
                 especie === EspecieFruta.MANZANA
                   ? `${randInt(40, 90)}% cubrimiento color`
-                  : especie === EspecieFruta.UVA_DE_MESA
-                    ? rand(["Ámbar claro", "Ámbar", "Dorado"])
-                    : rand(["Rojo intenso", "Rojo brillante", "Rojo oscuro"]),
+                  : especie === EspecieFruta.PERA
+                    ? rand(["Verde intenso", "Verde amarillento", "Bronceado (russet)"])
+                    : especie === EspecieFruta.KIWI
+                      ? rand(["Piel parda uniforme", "Piel parda con vello escaso"])
+                      : rand(["Rojo intenso", "Rojo brillante", "Rojo oscuro"]), // cereza
               firmezaKgF:
                 especie === EspecieFruta.MANZANA
                   ? randFloat(5.5, 8.5)
                   : especie === EspecieFruta.CEREZA
                     ? randFloat(250, 400, 0)
-                    : randFloat(1.2, 2.8),
+                    : randFloat(1.2, 2.8), // pera/kiwi
               brixGrados:
-                especie === EspecieFruta.UVA_DE_MESA
-                  ? randFloat(16, 22)
-                  : especie === EspecieFruta.CEREZA
-                    ? randFloat(17, 24)
-                    : especie === EspecieFruta.ARANDANO
-                      ? randFloat(10, 15)
-                      : randFloat(11, 15),
+                especie === EspecieFruta.CEREZA
+                  ? randFloat(17, 24)
+                  : especie === EspecieFruta.KIWI
+                    ? randFloat(9, 14)
+                    : randFloat(11, 15), // manzana/pera
               pesoMuestraKg: randFloat(5, 20),
               muestraCajas: randInt(3, 12),
               muestraUnidades: randInt(50, 200),

@@ -49,9 +49,17 @@ export default async function InspeccionDetallePage({
               {formatFechaHora(inspeccion.fecha)} · {inspeccion.inspector.nombre}
             </h2>
           </div>
-          <Badge className={resultadoBadgeClasses[inspeccion.resultado]}>
-            {resultadoLabels[inspeccion.resultado]}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Badge className={resultadoBadgeClasses[inspeccion.resultado]}>
+              {resultadoLabels[inspeccion.resultado]}
+            </Badge>
+            <Link
+              href={`/inspecciones/${inspeccion.id}/reporte`}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-800"
+            >
+              Ver reporte / PDF
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

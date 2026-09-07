@@ -8,7 +8,7 @@ export default function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <div className="border-b border-brand-800/10 bg-brand-950 text-cream md:hidden">
+    <div className="border-b border-brand-800/10 bg-brand-950 text-cream md:hidden print:hidden">
       <div className="flex items-center gap-2 px-4 py-3">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-leaf text-brand-950 font-bold text-sm">
           AF

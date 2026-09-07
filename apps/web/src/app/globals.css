@@ -51,3 +51,15 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--color-brand-500) transparent;
 }
+
+/* Reporte técnico imprimible (ver /inspecciones/[id]/reporte) */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    background: #fff;
+  }
+}
