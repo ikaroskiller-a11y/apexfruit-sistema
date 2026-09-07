@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { navLinks } from "./nav-links";
 
@@ -16,8 +17,14 @@ export default function Sidebar() {
     <aside className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:border-r md:border-brand-800/10 md:bg-brand-950 md:text-cream print:hidden">
       <div className="px-5 py-6">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-leaf text-brand-950 font-bold">
-            AF
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream p-1">
+            <Image
+              src="/logo-apexfruit-icon.png"
+              alt="Apex Fruit"
+              width={32}
+              height={32}
+              className="h-full w-full object-contain"
+            />
           </span>
           <span className="text-lg font-semibold tracking-tight text-cream">
             Apex Fruit

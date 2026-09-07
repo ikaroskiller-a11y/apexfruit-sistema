@@ -58,8 +58,14 @@ export default async function ReporteInspeccionPage({
         {/* Encabezado */}
         <header className="flex items-start justify-between gap-4 border-b border-brand-950/10 pb-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-leaf text-lg font-bold text-brand-950">
-              AF
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center">
+              <Image
+                src="/logo-apexfruit-icon.png"
+                alt="Apex Fruit"
+                width={44}
+                height={44}
+                className="h-full w-full object-contain"
+              />
             </span>
             <div>
               <p className="text-lg font-semibold text-brand-950">Apex Fruit SPA</p>
