@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EspecieFruta, FirmezaUnidad, ResultadoInspeccion, TipoDefecto } from "@prisma/client";
 import { evaluarResultadoCereza } from "@/lib/normas";
+import { getCurrentUser } from "@/lib/auth";
 
 function numeroOpcional(formData: FormData, campo: string): number | undefined {
   const valor = formData.get(campo);
@@ -48,8 +49,21 @@ function firmezaUnidadPorEspecie(especie: EspecieFruta): FirmezaUnidad | undefin
 const MAX_DEFECTOS = 10;
 
 export async function crearInspeccion(formData: FormData) {
+  const usuarioActual = await getCurrentUser();
+  if (!usuarioActual) {
+    // Proxy ya debería haber redirigido antes de llegar acá; esto es
+    // defensa en profundidad (ej: token expiró justo entre cargar el
+    // formulario y enviarlo).
+    redirect("/login?next=/inspecciones/nueva");
+  }
+
   const loteId = formData.get("loteId");
-  const inspectorId = formData.get("inspectorId");
+  // Un INSPECTOR siempre queda como inspector de su propia inspección,
+  // sin importar qué venga en el formulario (el campo va oculto/disabled
+  // en la UI para ese rol, pero el control real de seguridad es este).
+  // Solo un ADMINISTRADOR puede registrarla a nombre de otro inspector.
+  const inspectorId =
+    usuarioActual.rol === "ADMINISTRADOR" ? formData.get("inspectorId") : usuarioActual.id;
 
   if (typeof loteId !== "string" || !loteId) {
     throw new Error("Debe seleccionar un lote.");

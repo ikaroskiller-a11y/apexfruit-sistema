@@ -1,12 +1,13 @@
 import TopBar from "@/components/TopBar";
 import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import NuevaInspeccionForm from "./NuevaInspeccionForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function NuevaInspeccionPage() {
-  const [lotes, inspectores] = await Promise.all([
+  const [lotes, inspectores, usuarioActual] = await Promise.all([
     prisma.lote.findMany({
       include: { cliente: true },
       orderBy: { fechaIngreso: "desc" },
@@ -15,6 +16,7 @@ export default async function NuevaInspeccionPage() {
       where: { activo: true },
       orderBy: { nombre: "asc" },
     }),
+    getCurrentUser(),
   ]);
 
   return (
@@ -30,7 +32,11 @@ export default async function NuevaInspeccionPage() {
               registrar inspecciones.
             </p>
           ) : (
-            <NuevaInspeccionForm lotes={lotes} inspectores={inspectores} />
+            <NuevaInspeccionForm
+              lotes={lotes}
+              inspectores={inspectores}
+              usuarioActual={usuarioActual}
+            />
           )}
         </Card>
       </main>

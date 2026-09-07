@@ -23,20 +23,40 @@ prioridad fue que **funcione de punta a punta** con datos reales de Prisma.
 cd apps/web
 npm install
 
-# Variables de entorno (por ahora solo la ruta de la BD SQLite local)
+# Variables de entorno: ruta de la BD SQLite local + AUTH_SECRET (clave
+# para firmar la cookie de sesión). Genera tu propia clave con:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 cp .env.example .env
+# y reemplaza AUTH_SECRET en .env con la clave generada.
 
 # Prepara la base de datos local (crea prisma/dev.db y aplica el schema)
 npm run db:migrate
 
-# Carga datos de ejemplo (clientes, lotes e inspecciones ficticias)
+# Carga datos de ejemplo (clientes, lotes, inspecciones ficticias y
+# usuarios con password de demo — ver "Cómo loguearse en local" abajo)
 npm run db:seed
 
 # Levanta el servidor de desarrollo
 npm run dev
 ```
 
-Abrir [http://localhost:3000](http://localhost:3000) — redirige a `/dashboard`.
+Abrir [http://localhost:3000](http://localhost:3000) — redirige a `/dashboard`
+(o a `/login` si no hay sesión iniciada).
+
+### Cómo loguearse en local
+
+`npm run db:seed` crea usuarios reales con `passwordHash` (bcrypt). Todos
+comparten la misma contraseña de demostración:
+
+| Email                             | Rol            | Password         |
+| ---------------------------------- | -------------- | ----------------- |
+| `francisca.rojas@apexfruit.cl`     | ADMINISTRADOR  | `ApexFruit2026!`  |
+| `inspector1@apexfruit.cl` (y 2-4)  | INSPECTOR      | `ApexFruit2026!`  |
+
+Un ADMINISTRADOR puede registrar una inspección a nombre de cualquier
+inspector (selector libre); un INSPECTOR solo puede registrarla a su propio
+nombre (el campo queda fijo en el formulario, y el server action lo vuelve
+a forzar igual del lado del servidor).
 
 ### Otros comandos útiles
 
@@ -60,10 +80,12 @@ apps/web/
 │   │   ├── inspecciones/    # Listado (con filtros), detalle, formulario "nueva"
 │   │   ├── lotes/           # Listado y detalle de lotes/partidas
 │   │   ├── clientes/        # Listado y detalle de clientes/exportadoras
-│   │   └── login/           # Placeholder de login (sin lógica real todavía)
+│   │   └── login/           # Login (email + password) y logout
 │   ├── components/          # Sidebar, TopBar, gráficos, UI genérica
+│   ├── proxy.ts             # Protege rutas: sin sesión válida, redirige a /login
 │   └── lib/
-│       ├── auth.ts          # STUB de autenticación — ver comentarios ahí
+│       ├── auth.ts          # Sesión, login/logout, validación de credenciales
+│       ├── session.ts       # Firma/verificación del JWT de sesión (usa `jose`)
 │       ├── prisma.ts        # Cliente Prisma singleton
 │       ├── queries.ts       # Agregaciones para el dashboard
 │       └── labels.ts        # Traducciones/labels de los enums de Prisma
@@ -72,7 +94,8 @@ apps/web/
 
 ## Modelo de datos (resumen)
 
-- **Usuario**: inspector o administrador (rol). Todavía sin login real.
+- **Usuario**: inspector o administrador (rol). Login real con
+  `passwordHash` (bcrypt) — ver "Cómo loguearse en local" arriba.
 - **Cliente**: exportadora/comprador de la fruta.
 - **Lote**: partida de fruta — especie, variedad, productor, packing,
   temporada, cliente asociado.
@@ -88,10 +111,12 @@ apps/web/
 Esto es una base, no el producto final. Próximos pasos sugeridos, más o
 menos en orden de prioridad:
 
-1. **Autenticación real.** `src/lib/auth.ts` es un stub que siempre devuelve
-   un usuario de mentira. Reemplazar por NextAuth/Auth.js, Clerk, o sesión
-   propia (cookie + `Usuario.passwordHash`), y agregar `middleware.ts` para
-   proteger las rutas.
+1. ~~**Autenticación real.**~~ Hecho: sesión propia con cookie HTTP-only
+   firmada (JWT vía `jose`) + `Usuario.passwordHash` (bcrypt), protegida por
+   `src/proxy.ts`. Ver "Cómo loguearse en local" arriba. Pendiente real que
+   queda: recuperación de contraseña, expiración/renovación configurable
+   más allá de los 7 días fijos, y un panel para que un admin cree/edite
+   usuarios desde la UI (hoy solo se crean por seed o directo en la base).
 2. **Base de datos de producción.** Cambiar el `provider` del datasource en
    `prisma/schema.prisma` de `sqlite` a `postgresql` (o el motor que se
    defina) y correr `prisma migrate deploy` contra la BD real. SQLite es
@@ -106,8 +131,11 @@ menos en orden de prioridad:
    ver (se crean por seed o directo en la base). El formulario de nueva
    inspección asume que el lote ya existe.
 6. **Edición y eliminación de inspecciones** (hoy solo se crean y consultan).
-7. **Roles y permisos** — usar `Usuario.rol` para restringir acciones
-   (ej: solo un administrador edita clientes).
+7. **Roles y permisos** — hoy `Usuario.rol` solo restringe a quién puede
+   figurar como inspector en una inspección nueva (un INSPECTOR solo puede
+   registrarla a su propio nombre). Cuando exista UI de crear/editar
+   clientes o lotes, restringirla a ADMINISTRADOR con el mismo patrón
+   (`esAdmin()` en `src/lib/auth.ts`).
 8. **Validación de formularios** más robusta (hoy es mínima, del lado
    servidor) — considerar `zod` para los server actions.
 9. **Paginación** en los listados (inspecciones/lotes) cuando el volumen de

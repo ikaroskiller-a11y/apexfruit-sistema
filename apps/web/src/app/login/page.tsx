@@ -1,6 +1,13 @@
 import { Card } from "@/components/ui/Card";
+import { iniciarSesion } from "./actions";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; next?: string }>;
+}) {
+  const { error, next } = await searchParams;
+
   return (
     <main className="flex min-h-screen w-full items-center justify-center bg-brand-950 px-4">
       <Card className="w-full max-w-sm !bg-paper">
@@ -12,16 +19,20 @@ export default function LoginPage() {
           <p className="text-sm text-ink/60">Control de calidad de fruta</p>
         </div>
 
-        <form className="space-y-4 opacity-60">
+        <form action={iniciarSesion} className="space-y-4">
+          {next ? <input type="hidden" name="next" value={next} /> : null}
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.04em] text-brand-800">
               Correo
             </label>
             <input
               type="email"
-              disabled
+              name="email"
+              required
+              autoComplete="username"
+              autoFocus
               placeholder="nombre@apexfruit.cl"
-              className="w-full rounded-lg border border-brand-950/15 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-brand-950/15 bg-white px-3 py-2 text-sm text-ink focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
             />
           </div>
           <div>
@@ -30,24 +41,27 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
-              disabled
+              name="password"
+              required
+              autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full rounded-lg border border-brand-950/15 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-brand-950/15 bg-white px-3 py-2 text-sm text-ink focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
             />
           </div>
+
+          {error ? (
+            <p className="rounded-lg bg-[#fbe6e3] px-3 py-2 text-center text-xs text-[#b3261e]">
+              Correo o contraseña incorrectos.
+            </p>
+          ) : null}
+
           <button
-            type="button"
-            disabled
-            className="w-full cursor-not-allowed rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-cream"
+            type="submit"
+            className="w-full rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-cream hover:bg-brand-800"
           >
             Iniciar sesión
           </button>
         </form>
-
-        <p className="mt-6 rounded-lg bg-brand-gold/15 px-3 py-2 text-center text-xs text-amber-900">
-          Autenticación real todavía no implementada. Por ahora la app usa un
-          usuario de demostración (ver <code>src/lib/auth.ts</code>).
-        </p>
       </Card>
     </main>
   );

@@ -20,8 +20,14 @@ import {
   MercadoDestino,
   FirmezaUnidad,
 } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+// Password de demostración para TODOS los usuarios del seed (ver
+// README.md, sección "Cómo loguearse en local"). Nunca usar este valor
+// fuera de desarrollo local.
+const DEMO_PASSWORD = "ApexFruit2026!";
 
 function rand<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -94,10 +100,13 @@ async function main() {
   await prisma.usuario.deleteMany();
 
   console.log("Creando usuarios...");
+  const demoPasswordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+
   const admin = await prisma.usuario.create({
     data: {
       nombre: "Francisca Rojas",
       email: "francisca.rojas@apexfruit.cl",
+      passwordHash: demoPasswordHash,
       rol: RolUsuario.ADMINISTRADOR,
     },
   });
@@ -113,6 +122,7 @@ async function main() {
         data: {
           nombre,
           email: `inspector${i + 1}@apexfruit.cl`,
+          passwordHash: demoPasswordHash,
           rol: RolUsuario.INSPECTOR,
         },
       })
@@ -423,7 +433,7 @@ async function main() {
   const totalLotes = await prisma.lote.count();
   const totalInspecciones = await prisma.inspeccion.count();
   console.log(
-    `Listo: usuario admin ${admin.email}, ${clientes.length} clientes, ${totalLotes} lotes, ${totalInspecciones} inspecciones.`
+    `Listo: usuario admin ${admin.email} (password: ${DEMO_PASSWORD}), ${clientes.length} clientes, ${totalLotes} lotes, ${totalInspecciones} inspecciones.`
   );
 }
 

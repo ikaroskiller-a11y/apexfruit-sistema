@@ -11,6 +11,7 @@ import {
 } from "@/lib/labels";
 import { Field, inputClass } from "@/components/ui/FormField";
 import type { EspecieFruta } from "@prisma/client";
+import type { SesionUsuario } from "@/lib/auth";
 
 type LoteOpcion = {
   id: string;
@@ -28,10 +29,18 @@ type InspectorOpcion = {
 export default function NuevaInspeccionForm({
   lotes,
   inspectores,
+  usuarioActual,
 }: {
   lotes: LoteOpcion[];
   inspectores: InspectorOpcion[];
+  usuarioActual: SesionUsuario | null;
 }) {
+  // Un inspector registra sus propias inspecciones — no puede elegir a otra
+  // persona en el select. Un administrador sí puede (ej: cargar una
+  // inspección en nombre de otro inspector). El server action vuelve a
+  // forzar esto igual, así que esto es solo comodidad de UI, no el control
+  // de seguridad real.
+  const puedeElegirInspector = usuarioActual?.rol === "ADMINISTRADOR";
   const [nDefectos, setNDefectos] = useState(1);
   const [loteId, setLoteId] = useState("");
 
@@ -72,14 +81,26 @@ export default function NuevaInspeccionForm({
         </Field>
 
         <Field label="Inspector" required>
-          <select name="inspectorId" required className={inputClass}>
-            <option value="">Selecciona un inspector…</option>
-            {inspectores.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.nombre}
-              </option>
-            ))}
-          </select>
+          {puedeElegirInspector ? (
+            <select name="inspectorId" required className={inputClass}>
+              <option value="">Selecciona un inspector…</option>
+              {inspectores.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.nombre}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={usuarioActual?.nombre ?? ""}
+                disabled
+                className={`${inputClass} disabled:opacity-70`}
+              />
+              <input type="hidden" name="inspectorId" value={usuarioActual?.id ?? ""} />
+            </>
+          )}
         </Field>
 
         <Field label="Fecha">

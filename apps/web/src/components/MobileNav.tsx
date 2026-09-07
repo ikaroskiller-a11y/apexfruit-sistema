@@ -8,6 +8,9 @@ import { navLinks } from "./nav-links";
 export default function MobileNav() {
   const pathname = usePathname();
 
+  // Ver comentario equivalente en Sidebar.tsx.
+  if (pathname === "/login") return null;
+
   return (
     <div className="border-b border-brand-800/10 bg-brand-950 text-cream md:hidden print:hidden">
       <div className="flex items-center gap-2 px-4 py-3">
