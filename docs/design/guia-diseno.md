@@ -191,6 +191,48 @@ Fallback mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace
   (Guardar borrador) contorno `--line` con texto `--ink`; nunca dos botones sólidos
   compitiendo por atención en la misma fila.
 
+#### Formularios largos (múltiples secciones): "Nueva inspección" como referencia
+El formulario de nueva inspección se llena de pie en la línea de packing y agrupa
+~20 campos de distintos temas (datos generales, parámetros de calidad, hidroenfriado,
+defectos, observaciones, fotos). Patrón usado para que un formulario así no se sienta
+como un solo bloque interminable:
+- **Una tarjeta (`Card`) por sección**, con `CardTitle` (reutilizado, no un `<h3>`
+  aparte) y un ícono de 16px antes del título — el ícono no es decorativo, es la
+  primera señal para ubicar la sección al escanear/scrollear ("balanza" = parámetros
+  de calidad, "gota" = hidroenfriado, "triángulo" = defectos, etc.). `CardTitle` acepta
+  ahora un `className` opcional (con `!` para pisar su `mb-4` por defecto) para poder
+  compartir fila con un botón de acción de la sección sin duplicar sus estilos de texto.
+- **Filas repetibles con alta/baja real** (ej. "Defecto N"): se identifican con un id
+  estable de React (no el índice) para poder quitar una fila del medio sin reordenar
+  las demás por sorpresa; el nombre de campo que ve el server action sigue siendo
+  posicional (`defectoTipo_0`, `_1`, ...) porque el action ya ignora filas vacías. Cada
+  fila lleva su propio botón "Quitar" (ícono `X`, objetivo táctil ≥36px) — antes solo
+  se podía agregar, nunca sacar una fila agregada de más.
+- **Previsualización de archivos antes de enviar**: el input de fotos por sí solo no
+  confirma nada útil una vez seleccionadas ("3 archivos" en el mejor de los casos).
+  Se muestran miniaturas (`URL.createObjectURL`) con botón de quitar por foto
+  (`DataTransfer` para sacar un solo archivo del `FileList` sin rehacer toda la
+  selección) — se comprueba soporte de `DataTransfer` antes de mostrar el botón de
+  quitar, para no romper en un navegador viejo.
+- **Barra de acción fija al fondo en mobile** (`fixed inset-x-0 bottom-0`, vuelve a
+  flujo normal con `md:static`): en un formulario largo, forzar volver a subir hasta
+  el final solo para tocar "Guardar" es fricción evitable parado en la línea. Incluye
+  una acción "Cancelar" de igual jerarquía visual secundaria (contorno, no sólido)
+  como salida obvia.
+- **Nunca demos un dato de campo por sentado**: una línea de ayuda al inicio del
+  formulario aclara qué campos son obligatorios (`*`) y que el resto se puede dejar
+  en blanco — evita que alguien sin capacitación previa dude si debe "inventar" un
+  valor para poder enviar.
+
+### Navegación: la acción más usada no es "un enlace más"
+"Nueva inspección" es la acción que se repite constantemente parado en el packing —
+en Sidebar y MobileNav lleva ícono `+` y fondo `--gold` (en vez del mismo tratamiento
+que Dashboard/Lotes/Clientes, que son de solo consulta) para que se reconozca sin leer
+el texto. `NavLink` expone un flag `primaria` para este tratamiento; el estado activo
+(`--leaf`, ya definido) sigue ganando cuando la ruta actual es esa. Los controles de
+la barra superior que se usan en cada sesión (cambiar tema, cerrar sesión) suben de
+24-32px a un mínimo de 36px de objetivo táctil.
+
 ### Badges de estado de inspección
 Forma fija: ícono (12px) + texto (12px, 600, mayúsculas ligeras) + fondo tinte +
 radio 999px (píldora). Los cuatro estados posibles de un lote:

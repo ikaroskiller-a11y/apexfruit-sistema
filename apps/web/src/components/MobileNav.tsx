@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Plus } from "lucide-react";
 import { navLinks } from "./nav-links";
 
 export default function MobileNav() {
@@ -25,7 +26,7 @@ export default function MobileNav() {
         </span>
         <span className="font-semibold">Apex Fruit</span>
       </div>
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-3">
+      <nav className="flex gap-1.5 overflow-x-auto px-3 pb-3">
         {navLinks.map((link) => {
           const active =
             pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -33,12 +34,15 @@ export default function MobileNav() {
             <Link
               key={link.href}
               href={link.href}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
+              className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-2 text-xs font-medium ${
                 active
                   ? "bg-brand-leaf text-brand-950"
-                  : "bg-brand-800/60 text-cream/90"
+                  : link.primaria
+                    ? "bg-brand-gold/90 text-brand-950"
+                    : "bg-brand-800/60 text-cream/90"
               }`}
             >
+              {link.primaria ? <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
               {link.label}
             </Link>
           );

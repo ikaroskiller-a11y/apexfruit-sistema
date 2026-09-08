@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import TopBar from "@/components/TopBar";
-import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
 import { esAdmin, getCurrentUser } from "@/lib/auth";
 import InspeccionForm from "../../InspeccionForm";
@@ -35,7 +34,10 @@ export default async function EditarInspeccionPage({
     <>
       <TopBar title={`Editar inspección · ${inspeccion.lote.codigo}`} />
       <main className="flex-1 px-4 py-6 md:px-8">
-        <Card className="mx-auto max-w-4xl">
+        {/* El formulario arma sus propias tarjetas por sección — acá solo se
+            limita el ancho de lectura, sin envolverlo en una Card extra que
+            duplicaría el borde. */}
+        <div className="mx-auto max-w-4xl">
           <InspeccionForm
             lotes={lotes}
             inspectores={inspectores}
@@ -43,7 +45,7 @@ export default async function EditarInspeccionPage({
             action={actualizarInspeccion}
             inspeccion={inspeccion}
           />
-        </Card>
+        </div>
       </main>
     </>
   );

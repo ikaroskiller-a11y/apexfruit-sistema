@@ -42,8 +42,23 @@ function booleanoOpcional(formData: FormData, campo: string): boolean | undefine
   return undefined;
 }
 
+// Solo se aceptan imágenes: tanto la extensión del nombre como el MIME que
+// reporta el navegador deben estar en esta lista. Ninguno de los dos es
+// completamente confiable por separado (el nombre lo elige quien sube el
+// archivo, el MIME lo puede falsificar un cliente no-navegador), pero juntos
+// evitan que alguien suba un .html/.svg con script o un ejecutable disfrazado
+// a `public/uploads`, que Next sirve tal cual sin sanitizar.
+const EXTENSIONES_IMAGEN_PERMITIDAS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+
+function esImagenPermitida(foto: File): boolean {
+  const ext = path.extname(foto.name).toLowerCase();
+  return EXTENSIONES_IMAGEN_PERMITIDAS.has(ext) && foto.type.startsWith("image/");
+}
+
 async function guardarFotos(inspeccionId: string, formData: FormData): Promise<void> {
-  const fotos = formData.getAll("fotos").filter((f): f is File => f instanceof File && f.size > 0);
+  const fotos = formData
+    .getAll("fotos")
+    .filter((f): f is File => f instanceof File && f.size > 0 && esImagenPermitida(f));
   if (fotos.length === 0) return;
 
   const uploadsDir = path.join(process.cwd(), "public", "uploads");

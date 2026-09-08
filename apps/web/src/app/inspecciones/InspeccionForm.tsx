@@ -1,7 +1,18 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import {
+  AlertTriangle,
+  Camera,
+  ClipboardList,
+  Droplets,
+  Gauge,
+  MessageSquareText,
+  Plus,
+  X,
+} from "lucide-react";
 import {
   especieLabels,
   resultadoOptions,
@@ -10,6 +21,7 @@ import {
   calibresCerezaPremiumAsia,
 } from "@/lib/labels";
 import { Field, campoClase, FormErrorBanner } from "@/components/ui/FormField";
+import { Card, CardTitle } from "@/components/ui/Card";
 import { ESTADO_INICIAL, type FormState } from "@/lib/validation";
 import type { EspecieFruta, TipoDefecto } from "@prisma/client";
 import type { SesionUsuario } from "@/lib/auth";
@@ -66,6 +78,31 @@ export type InspeccionExistente = {
   fotos: FotoExistente[];
 };
 
+const MAX_DEFECTOS = 10;
+
+// Título de sección con ícono: reutiliza CardTitle (mismo componente que las
+// pantallas de detalle) con un ícono adelante que ayuda a ubicar cada bloque
+// de un vistazo en un formulario largo — la señal no es decorativa, marca de
+// qué tema es cada tarjeta sin tener que leer el título completo.
+function SectionTitle({
+  icon: Icon,
+  children,
+  className = "",
+}: {
+  icon: typeof Gauge;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <CardTitle className={className}>
+      <span className="flex items-center gap-2">
+        <Icon className="h-4 w-4 shrink-0 text-brand-700 dark:text-brand-500" aria-hidden />
+        {children}
+      </span>
+    </CardTitle>
+  );
+}
+
 export default function InspeccionForm({
   lotes,
   inspectores,
@@ -89,9 +126,51 @@ export default function InspeccionForm({
   // forzar esto igual, así que esto es solo comodidad de UI, no el control
   // de seguridad real.
   const puedeElegirInspector = usuarioActual?.rol === "ADMINISTRADOR";
-  const [nDefectos, setNDefectos] = useState(Math.max(1, inspeccion?.defectos.length ?? 1));
   const [loteId, setLoteId] = useState(inspeccion?.loteId ?? "");
   const [fotosAEliminar, setFotosAEliminar] = useState<Set<string>>(new Set());
+
+  // Filas de defectos: se identifican por un id estable (para las keys de
+  // React y para poder quitar una fila del medio sin sorpresas), pero el
+  // nombre de los campos que lee el server action (`defectoTipo_0`,
+  // `defectoTipo_1`, ...) se arma con la posición actual en pantalla — el
+  // server action ya ignora las filas vacías, así que da igual si al quitar
+  // una fila los índices de las que quedan se corren. En modo edición se
+  // arranca con una fila por cada defecto ya registrado.
+  const filasIniciales = Math.max(1, inspeccion?.defectos.length ?? 1);
+  const nextRowId = useRef(filasIniciales);
+  const [defectRows, setDefectRows] = useState<number[]>(() =>
+    Array.from({ length: filasIniciales }, (_, i) => i)
+  );
+
+  function agregarDefecto() {
+    setDefectRows((rows) =>
+      rows.length >= MAX_DEFECTOS ? rows : [...rows, nextRowId.current++]
+    );
+  }
+  function quitarDefecto(id: number) {
+    setDefectRows((rows) => rows.filter((r) => r !== id));
+  }
+
+  // Previsualización de fotos antes de enviar: el input de archivo por sí
+  // solo no muestra nada útil una vez seleccionadas las fotos (a lo más "3
+  // archivos" en algunos navegadores), así que en el packing es fácil no
+  // notar que se seleccionó la foto equivocada. DataTransfer permite además
+  // sacar una sola foto de la selección sin tener que volver a elegir todas.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fotos, setFotos] = useState<File[]>([]);
+  const soportaQuitarFoto = typeof DataTransfer !== "undefined";
+
+  function onFotosChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setFotos(e.target.files ? Array.from(e.target.files) : []);
+  }
+  function quitarFoto(index: number) {
+    if (!soportaQuitarFoto || !fileInputRef.current) return;
+    const restantes = fotos.filter((_, i) => i !== index);
+    const dt = new DataTransfer();
+    restantes.forEach((f) => dt.items.add(f));
+    fileInputRef.current.files = dt.files;
+    setFotos(restantes);
+  }
 
   const especieSeleccionada = useMemo(
     () => lotes.find((l) => l.id === loteId)?.especie,
@@ -114,94 +193,103 @@ export default function InspeccionForm({
     (inspeccion ? "" : (usuarioActual?.nombre ?? ""));
 
   return (
-    <form action={formAction} className="space-y-8">
+    // Padding inferior extra: deja espacio para que la barra de acción fija
+    // (ver más abajo) no tape el último campo en pantallas chicas.
+    <form action={formAction} className="space-y-4 pb-20 md:pb-4">
       {inspeccion ? <input type="hidden" name="inspeccionId" value={inspeccion.id} /> : null}
+
+      <p className="text-sm text-fg-muted">
+        Completa los datos de la inspección en terreno. Los campos con{" "}
+        <span className="font-semibold text-state-danger">*</span> son obligatorios;
+        el resto puedes dejarlo en blanco si no aplica o no lo mediste.
+      </p>
 
       <FormErrorBanner message={state.error} />
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Lote" required error={errores.loteId}>
-          <select
-            name="loteId"
-            required
-            value={loteId}
-            onChange={(e) => setLoteId(e.target.value)}
-            className={`${campoClase(errores.loteId)} font-mono`}
-          >
-            <option value="">Selecciona un lote…</option>
-            {lotes.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.codigo} · {especieLabels[l.especie]} {l.variedad} ·{" "}
-                {l.cliente.nombre}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Inspector" required error={errores.inspectorId}>
-          {puedeElegirInspector ? (
+      <Card>
+        <SectionTitle icon={ClipboardList}>Datos generales</SectionTitle>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Lote" required error={errores.loteId}>
             <select
-              name="inspectorId"
+              name="loteId"
               required
-              defaultValue={inspectorIdActual}
-              className={campoClase(errores.inspectorId)}
+              value={loteId}
+              onChange={(e) => setLoteId(e.target.value)}
+              className={`${campoClase(errores.loteId)} font-mono`}
             >
-              <option value="">Selecciona un inspector…</option>
-              {inspectores.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.nombre}
+              <option value="">Selecciona un lote…</option>
+              {lotes.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.codigo} · {especieLabels[l.especie]} {l.variedad} ·{" "}
+                  {l.cliente.nombre}
                 </option>
               ))}
             </select>
-          ) : (
-            <>
-              <input
-                type="text"
-                value={nombreInspectorActual}
-                disabled
-                readOnly
-                className={`${campoClase()} disabled:opacity-70`}
-              />
-              <input type="hidden" name="inspectorId" value={inspectorIdActual} />
-            </>
-          )}
-        </Field>
+          </Field>
 
-        <Field label="Fecha" error={errores.fecha}>
-          <input
-            type="date"
-            name="fecha"
-            defaultValue={(inspeccion?.fecha ?? new Date()).toISOString().slice(0, 10)}
-            className={campoClase(errores.fecha)}
-          />
-        </Field>
+          <Field label="Inspector" required error={errores.inspectorId}>
+            {puedeElegirInspector ? (
+              <select
+                name="inspectorId"
+                required
+                defaultValue={inspectorIdActual}
+                className={campoClase(errores.inspectorId)}
+              >
+                <option value="">Selecciona un inspector…</option>
+                {inspectores.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.nombre}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={nombreInspectorActual}
+                  disabled
+                  readOnly
+                  className={`${campoClase()} disabled:opacity-70`}
+                />
+                <input type="hidden" name="inspectorId" value={inspectorIdActual} />
+              </>
+            )}
+          </Field>
 
-        <Field label="Resultado" error={errores.resultado}>
-          <select
-            name="resultado"
-            defaultValue={inspeccion?.resultado ?? "CATEGORIA_1"}
-            className={campoClase(errores.resultado)}
-          >
-            {resultadoOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          {esCereza ? (
-            <p className="mt-1 text-xs text-fg-muted">
-              Para cereza, el resultado se recalcula automáticamente según el
-              catálogo de defectos de condición (ver sección de defectos).
-            </p>
-          ) : null}
-        </Field>
-      </section>
+          <Field label="Fecha" error={errores.fecha}>
+            <input
+              type="date"
+              name="fecha"
+              defaultValue={(inspeccion?.fecha ?? new Date()).toISOString().slice(0, 10)}
+              className={campoClase(errores.fecha)}
+            />
+          </Field>
 
-      <section>
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
-          Parámetros de calidad
-        </h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <Field label="Resultado" error={errores.resultado}>
+            <select
+              name="resultado"
+              defaultValue={inspeccion?.resultado ?? "CATEGORIA_1"}
+              className={campoClase(errores.resultado)}
+            >
+              {resultadoOptions.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {esCereza ? (
+              <p className="mt-1 text-xs text-fg-muted">
+                Para cereza, el resultado se recalcula automáticamente según el
+                catálogo de defectos de condición (ver sección de defectos).
+              </p>
+            ) : null}
+          </Field>
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle icon={Gauge}>Parámetros de calidad</SectionTitle>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Calibre" error={errores.calibre}>
             {esCereza ? (
               <select
@@ -322,14 +410,12 @@ export default function InspeccionForm({
             />
           </Field>
         </div>
-      </section>
+      </Card>
 
       {esCereza ? (
-        <section>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
-            Control de hidroenfriado
-          </h3>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <Card>
+          <SectionTitle icon={Droplets}>Control de hidroenfriado</SectionTitle>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="T° agua (°C)" error={errores.hidrocoolerTempAguaC}>
               <input
                 type="number"
@@ -350,7 +436,10 @@ export default function InspeccionForm({
                 className={`${campoClase(errores.hidrocoolerCloroLibrePpm)} font-mono tabular-nums`}
               />
             </Field>
-            <Field label="Tiempo exposición (min)" error={errores.hidrocoolerTiempoExposicionMin}>
+            <Field
+              label="Tiempo exposición (min)"
+              error={errores.hidrocoolerTiempoExposicionMin}
+            >
               <input
                 type="number"
                 step="0.1"
@@ -387,74 +476,98 @@ export default function InspeccionForm({
               </select>
             </Field>
           </div>
-        </section>
+        </Card>
       ) : null}
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <SectionTitle icon={AlertTriangle} className="!mb-0">
             Defectos detectados
-          </h3>
+          </SectionTitle>
           <button
             type="button"
-            onClick={() => setNDefectos((n) => Math.min(n + 1, 10))}
-            className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-500"
+            onClick={agregarDefecto}
+            disabled={defectRows.length >= MAX_DEFECTOS}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-fg hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
           >
-            + Agregar defecto
+            <Plus className="h-4 w-4" aria-hidden />
+            Agregar defecto
           </button>
         </div>
-        <div className="space-y-3">
-          {Array.from({ length: nDefectos }).map((_, i) => {
-            const defectoExistente = inspeccion?.defectos[i];
-            const erroresFila = {
-              tipo: errores[`defecto_${i}_tipo`],
-              porcentaje: errores[`defecto_${i}_porcentaje`],
-              cantidad: errores[`defecto_${i}_cantidad`],
-            };
-            return (
-              <div
-                key={i}
-                className="grid grid-cols-1 gap-3 rounded-lg border border-border p-3 sm:grid-cols-3"
-              >
-                <Field label="Tipo de defecto" error={erroresFila.tipo}>
-                  <select
-                    name={`defectoTipo_${i}`}
-                    className={campoClase(erroresFila.tipo)}
-                    defaultValue={defectoExistente?.tipo ?? ""}
-                  >
-                    <option value="">Sin especificar</option>
-                    {tipoDefectoOptions.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="% de la muestra" error={erroresFila.porcentaje}>
-                  <input
-                    type="number"
-                    step="0.1"
-                    name={`defectoPorcentaje_${i}`}
-                    defaultValue={defectoExistente?.porcentaje ?? ""}
-                    className={`${campoClase(erroresFila.porcentaje)} font-mono tabular-nums`}
-                  />
-                </Field>
-                <Field label="Cantidad (unidades)" error={erroresFila.cantidad}>
-                  <input
-                    type="number"
-                    name={`defectoCantidad_${i}`}
-                    defaultValue={defectoExistente?.cantidad ?? ""}
-                    className={`${campoClase(erroresFila.cantidad)} font-mono tabular-nums`}
-                  />
-                </Field>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
-      <section>
-        <Field label="Observaciones" error={errores.observaciones}>
+        {defectRows.length === 0 ? (
+          <p className="text-sm text-fg-muted">
+            Sin defectos registrados. Usa &ldquo;Agregar defecto&rdquo; si encontraste
+            alguno en la muestra.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {defectRows.map((rowId, i) => {
+              const defectoExistente = inspeccion?.defectos[i];
+              const erroresFila = {
+                tipo: errores[`defecto_${i}_tipo`],
+                porcentaje: errores[`defecto_${i}_porcentaje`],
+                cantidad: errores[`defecto_${i}_cantidad`],
+              };
+              return (
+                <div key={rowId} className="rounded-lg border border-border p-3">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
+                      Defecto {i + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => quitarDefecto(rowId)}
+                      aria-label={`Quitar defecto ${i + 1}`}
+                      title="Quitar este defecto"
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-state-danger-bg hover:text-state-danger"
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <Field label="Tipo de defecto" error={erroresFila.tipo}>
+                      <select
+                        name={`defectoTipo_${i}`}
+                        className={campoClase(erroresFila.tipo)}
+                        defaultValue={defectoExistente?.tipo ?? ""}
+                      >
+                        <option value="">Sin especificar</option>
+                        {tipoDefectoOptions.map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="% de la muestra" error={erroresFila.porcentaje}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        name={`defectoPorcentaje_${i}`}
+                        defaultValue={defectoExistente?.porcentaje ?? ""}
+                        className={`${campoClase(erroresFila.porcentaje)} font-mono tabular-nums`}
+                      />
+                    </Field>
+                    <Field label="Cantidad (unidades)" error={erroresFila.cantidad}>
+                      <input
+                        type="number"
+                        name={`defectoCantidad_${i}`}
+                        defaultValue={defectoExistente?.cantidad ?? ""}
+                        className={`${campoClase(erroresFila.cantidad)} font-mono tabular-nums`}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <SectionTitle icon={MessageSquareText}>Observaciones</SectionTitle>
+        <Field label="" error={errores.observaciones}>
           <textarea
             name="observaciones"
             rows={3}
@@ -463,79 +576,131 @@ export default function InspeccionForm({
             placeholder="Notas generales de la inspección…"
           />
         </Field>
-      </section>
+      </Card>
 
-      {inspeccion && inspeccion.fotos.length > 0 ? (
-        <section>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
-            Fotos ya cargadas
-          </h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {inspeccion.fotos.map((foto) => {
-              const marcada = fotosAEliminar.has(foto.id);
-              return (
-                <label
-                  key={foto.id}
-                  className={`relative block cursor-pointer overflow-hidden rounded-lg border ${
-                    marcada ? "border-state-danger" : "border-border"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    name="eliminarFoto"
-                    value={foto.id}
-                    checked={marcada}
-                    onChange={(e) => {
-                      setFotosAEliminar((prev) => {
-                        const next = new Set(prev);
-                        if (e.target.checked) next.add(foto.id);
-                        else next.delete(foto.id);
-                        return next;
-                      });
-                    }}
-                    className="absolute right-1.5 top-1.5 z-10 h-4 w-4 accent-state-danger"
-                  />
-                  <div className="relative aspect-square bg-card-alt">
-                    <Image
-                      src={foto.url}
-                      alt={foto.descripcion ?? "Foto de inspección"}
-                      fill
-                      sizes="150px"
-                      className={`object-cover ${marcada ? "opacity-40" : ""}`}
+      <Card>
+        <SectionTitle icon={Camera}>Fotos</SectionTitle>
+
+        {inspeccion && inspeccion.fotos.length > 0 ? (
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
+              Fotos ya cargadas
+            </p>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+              {inspeccion.fotos.map((foto) => {
+                const marcada = fotosAEliminar.has(foto.id);
+                return (
+                  <label
+                    key={foto.id}
+                    className={`relative block cursor-pointer overflow-hidden rounded-lg border ${
+                      marcada ? "border-state-danger" : "border-border"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      name="eliminarFoto"
+                      value={foto.id}
+                      checked={marcada}
+                      onChange={(e) => {
+                        setFotosAEliminar((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(foto.id);
+                          else next.delete(foto.id);
+                          return next;
+                        });
+                      }}
+                      className="absolute right-1.5 top-1.5 z-10 h-4 w-4 accent-state-danger"
                     />
-                  </div>
-                  {marcada ? (
-                    <span className="absolute inset-x-0 bottom-0 bg-state-danger-bg py-0.5 text-center text-[11px] font-medium text-state-danger">
-                      Se eliminará
-                    </span>
+                    <div className="relative aspect-square bg-card-alt">
+                      <Image
+                        src={foto.url}
+                        alt={foto.descripcion ?? "Foto de inspección"}
+                        fill
+                        sizes="150px"
+                        className={`object-cover ${marcada ? "opacity-40" : ""}`}
+                      />
+                    </div>
+                    {marcada ? (
+                      <span className="absolute inset-x-0 bottom-0 bg-state-danger-bg py-0.5 text-center text-[11px] font-medium text-state-danger">
+                        Se eliminará
+                      </span>
+                    ) : null}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <p className="mb-3 text-xs text-fg-muted">
+          Puedes tomar fotos con la cámara del celular o elegir varias desde la
+          galería.
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          name="fotos"
+          accept="image/*"
+          multiple
+          onChange={onFotosChange}
+          className="block w-full text-sm text-fg-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-medium file:text-cream hover:file:bg-brand-800"
+        />
+
+        {fotos.length > 0 ? (
+          <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+            {fotos.map((foto, i) => {
+              const url = URL.createObjectURL(foto);
+              return (
+                <div
+                  key={`${foto.name}-${foto.lastModified}-${i}`}
+                  className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-card-alt"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- previsualización local de un File, no una URL remota que Next pueda optimizar */}
+                  <img
+                    src={url}
+                    alt={`Foto seleccionada ${i + 1}: ${foto.name}`}
+                    className="h-full w-full object-cover"
+                    onLoad={() => URL.revokeObjectURL(url)}
+                  />
+                  {soportaQuitarFoto ? (
+                    <button
+                      type="button"
+                      onClick={() => quitarFoto(i)}
+                      aria-label={`Quitar foto ${i + 1}`}
+                      title="Quitar esta foto"
+                      className="absolute top-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-state-danger"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    </button>
                   ) : null}
-                </label>
+                </div>
               );
             })}
           </div>
-        </section>
-      ) : null}
+        ) : null}
+      </Card>
 
-      <section>
-        <Field label={inspeccion ? "Agregar fotos" : "Fotos"}>
-          <input
-            type="file"
-            name="fotos"
-            accept="image/*"
-            multiple
-            className="block w-full text-sm text-fg-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-medium file:text-cream hover:file:bg-brand-800"
-          />
-        </Field>
-      </section>
-
-      <div className="flex justify-end gap-3 border-t border-border pt-4">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-cream hover:bg-brand-800 disabled:opacity-60"
-        >
-          {pending ? "Guardando…" : inspeccion ? "Guardar cambios" : "Guardar inspección"}
-        </button>
+      {/* Barra de acción: fija al fondo en mobile (donde este formulario largo
+          se llena de pie en la línea de packing y no conviene obligar a
+          volver a subir hasta el final para guardar), en flujo normal en
+          desktop. El botón "Cancelar" da una salida obvia sin perder el
+          progreso silenciosamente. */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:static md:z-auto md:mt-2 md:border-t md:bg-transparent md:px-0 md:py-0 md:shadow-none">
+        <div className="mx-auto flex max-w-4xl justify-end gap-3">
+          <Link
+            href={inspeccion ? `/inspecciones/${inspeccion.id}` : "/inspecciones"}
+            className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-fg hover:bg-surface"
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-cream hover:bg-brand-800 disabled:opacity-60"
+          >
+            {pending ? "Guardando…" : inspeccion ? "Guardar cambios" : "Guardar inspección"}
+          </button>
+        </div>
       </div>
     </form>
   );
