@@ -2,19 +2,38 @@ import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import { Card } from "@/components/ui/Card";
 import { EspecieTag } from "@/components/ui/EspecieTag";
+import { Pagination } from "@/components/ui/Pagination";
 import { prisma } from "@/lib/prisma";
+import { esAdmin, getCurrentUser } from "@/lib/auth";
 import { formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function LotesPage() {
-  const lotes = await prisma.lote.findMany({
-    include: {
-      cliente: true,
-      inspecciones: { select: { porcentajeRechazo: true } },
-    },
-    orderBy: { fechaIngreso: "desc" },
-  });
+const POR_PAGINA = 25;
+
+export default async function LotesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+
+  const [lotes, totalLotes, usuario] = await Promise.all([
+    prisma.lote.findMany({
+      include: {
+        cliente: true,
+        inspecciones: { select: { porcentajeRechazo: true } },
+      },
+      orderBy: { fechaIngreso: "desc" },
+      skip: (page - 1) * POR_PAGINA,
+      take: POR_PAGINA,
+    }),
+    prisma.lote.count(),
+    getCurrentUser(),
+  ]);
+
+  const totalPaginas = Math.max(1, Math.ceil(totalLotes / POR_PAGINA));
 
   const filas = lotes.map((lote) => {
     const valores = lote.inspecciones
@@ -27,8 +46,20 @@ export default async function LotesPage() {
 
   return (
     <>
-      <TopBar title="Lotes" />
-      <main className="flex-1 px-4 py-6 md:px-8">
+      <TopBar
+        title="Lotes"
+        actions={
+          esAdmin(usuario) ? (
+            <Link
+              href="/lotes/nuevo"
+              className="rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-cream hover:bg-brand-800"
+            >
+              + Nuevo lote
+            </Link>
+          ) : null
+        }
+      />
+      <main className="flex-1 space-y-4 px-4 py-6 md:px-8">
         {/* Desktop / tablet: tabla con encabezado sticky y overflow propio */}
         <Card className="hidden md:block !p-0">
           <div className="max-h-[70vh] overflow-auto rounded-xl">
@@ -131,6 +162,13 @@ export default async function LotesPage() {
             </p>
           ) : null}
         </div>
+
+        <Pagination
+          page={page}
+          totalPages={totalPaginas}
+          totalItems={totalLotes}
+          buildHref={(p) => `/lotes?page=${p}`}
+        />
       </main>
     </>
   );

@@ -1,10 +1,18 @@
+import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { salirSesion } from "@/app/login/actions";
 import { rolLabels } from "@/lib/labels";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogOut } from "lucide-react";
 
-export default async function TopBar({ title }: { title: string }) {
+export default async function TopBar({
+  title,
+  actions,
+}: {
+  title: string;
+  /** Botones opcionales a la derecha del título (ej: "+ Nuevo cliente"). */
+  actions?: ReactNode;
+}) {
   const user = await getCurrentUser();
 
   return (
@@ -12,6 +20,7 @@ export default async function TopBar({ title }: { title: string }) {
       <h1 className="text-2xl leading-[30px] font-semibold text-fg">{title}</h1>
 
       <div className="flex items-center gap-3">
+        {actions}
         <ThemeToggle />
 
         {user ? (

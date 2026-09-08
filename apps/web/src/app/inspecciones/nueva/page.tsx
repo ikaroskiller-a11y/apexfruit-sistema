@@ -2,7 +2,8 @@ import TopBar from "@/components/TopBar";
 import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import NuevaInspeccionForm from "./NuevaInspeccionForm";
+import InspeccionForm from "../InspeccionForm";
+import { crearInspeccion } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,11 @@ export default async function NuevaInspeccionPage() {
               registrar inspecciones.
             </p>
           ) : (
-            <NuevaInspeccionForm
+            <InspeccionForm
               lotes={lotes}
               inspectores={inspectores}
               usuarioActual={usuarioActual}
+              action={crearInspeccion}
             />
           )}
         </Card>

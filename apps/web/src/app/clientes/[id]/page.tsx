@@ -4,8 +4,11 @@ import type { ReactNode } from "react";
 import TopBar from "@/components/TopBar";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { EspecieTag } from "@/components/ui/EspecieTag";
+import { BotonEliminar } from "@/components/ui/BotonEliminar";
 import { prisma } from "@/lib/prisma";
+import { esAdmin, getCurrentUser } from "@/lib/auth";
 import { formatFecha, formatPorcentaje } from "@/lib/format";
+import { eliminarCliente } from "../actions";
 
 export default async function ClienteDetallePage({
   params,
@@ -14,17 +17,21 @@ export default async function ClienteDetallePage({
 }) {
   const { id } = await params;
 
-  const cliente = await prisma.cliente.findUnique({
-    where: { id },
-    include: {
-      lotes: {
-        include: { inspecciones: { select: { porcentajeRechazo: true } } },
-        orderBy: { fechaIngreso: "desc" },
+  const [cliente, usuario] = await Promise.all([
+    prisma.cliente.findUnique({
+      where: { id },
+      include: {
+        lotes: {
+          include: { inspecciones: { select: { porcentajeRechazo: true } } },
+          orderBy: { fechaIngreso: "desc" },
+        },
       },
-    },
-  });
+    }),
+    getCurrentUser(),
+  ]);
 
   if (!cliente) notFound();
+  const puedeEditar = esAdmin(usuario);
 
   const filas = cliente.lotes.map((lote) => {
     const valores = lote.inspecciones
@@ -39,9 +46,26 @@ export default async function ClienteDetallePage({
     <>
       <TopBar title={cliente.nombre} />
       <main className="flex-1 space-y-6 px-4 py-6 md:px-8">
-        <Link href="/clientes" className="text-sm text-brand-700 hover:underline dark:text-brand-500">
-          ← Volver a clientes
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/clientes" className="text-sm text-brand-700 hover:underline dark:text-brand-500">
+            ← Volver a clientes
+          </Link>
+          {puedeEditar ? (
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/clientes/${cliente.id}/editar`}
+                className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface"
+              >
+                Editar
+              </Link>
+              <BotonEliminar
+                action={eliminarCliente}
+                hiddenFields={{ clienteId: cliente.id }}
+                confirmMessage={`¿Eliminar el cliente "${cliente.nombre}"? Esta acción no se puede deshacer.`}
+              />
+            </div>
+          ) : null}
+        </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-1">

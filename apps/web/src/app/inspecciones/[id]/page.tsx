@@ -6,7 +6,9 @@ import TopBar from "@/components/TopBar";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EspecieTag } from "@/components/ui/EspecieTag";
+import { BotonEliminar } from "@/components/ui/BotonEliminar";
 import { prisma } from "@/lib/prisma";
+import { esAdmin, getCurrentUser } from "@/lib/auth";
 import {
   resultadoStatusMap,
   resultadoLabels,
@@ -20,6 +22,7 @@ import {
   clasificarFirmezaCereza,
   criterioObjecionCereza,
 } from "@/lib/normas";
+import { eliminarInspeccion } from "./actions";
 
 export default async function InspeccionDetallePage({
   params,
@@ -28,17 +31,22 @@ export default async function InspeccionDetallePage({
 }) {
   const { id } = await params;
 
-  const inspeccion = await prisma.inspeccion.findUnique({
-    where: { id },
-    include: {
-      lote: { include: { cliente: true } },
-      inspector: true,
-      defectos: true,
-      fotos: true,
-    },
-  });
+  const [inspeccion, usuarioActual] = await Promise.all([
+    prisma.inspeccion.findUnique({
+      where: { id },
+      include: {
+        lote: { include: { cliente: true } },
+        inspector: true,
+        defectos: true,
+        fotos: true,
+      },
+    }),
+    getCurrentUser(),
+  ]);
 
   if (!inspeccion) notFound();
+  const puedeGestionar =
+    !!usuarioActual && (esAdmin(usuarioActual) || usuarioActual.id === inspeccion.inspectorId);
 
   const esCereza = inspeccion.lote.especie === "CEREZA";
   const esKiwi = inspeccion.lote.especie === "KIWI";
@@ -68,7 +76,7 @@ export default async function InspeccionDetallePage({
               {formatFechaHora(inspeccion.fecha)} · {inspeccion.inspector.nombre}
             </h2>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Badge status={resultadoStatusMap[inspeccion.resultado]}>
               {resultadoLabels[inspeccion.resultado]}
             </Badge>
@@ -78,6 +86,21 @@ export default async function InspeccionDetallePage({
             >
               Ver reporte / PDF
             </Link>
+            {puedeGestionar ? (
+              <>
+                <Link
+                  href={`/inspecciones/${inspeccion.id}/editar`}
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface"
+                >
+                  Editar
+                </Link>
+                <BotonEliminar
+                  action={eliminarInspeccion}
+                  hiddenFields={{ inspeccionId: inspeccion.id }}
+                  confirmMessage={`¿Eliminar esta inspección del lote "${inspeccion.lote.codigo}"? Esta acción no se puede deshacer.`}
+                />
+              </>
+            ) : null}
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import type { MercadoDestino, TipoDefecto } from "@prisma/client";
+import { EspecieFruta, FirmezaUnidad, type MercadoDestino, type TipoDefecto } from "@prisma/client";
 import { mercadoDestinoLabels } from "@/lib/labels";
 
 /**
@@ -162,6 +162,27 @@ export const firmezaMinimaKiwiLbs: Record<MercadoDestino, number | null> = {
   LATAM: 6,
   OTRO: null,
 };
+
+/**
+ * Unidad de firmeza real por especie (manzana/pera -> kgF, cereza -> UD
+ * Durofel, kiwi -> libras). Se deriva server-side de la especie del lote
+ * para no depender de que el cliente la mande "bien". Vive en este módulo
+ * (y no en un archivo de Server Actions) porque es una función síncrona —
+ * un archivo con "use server" solo puede exportar funciones async.
+ */
+export function firmezaUnidadPorEspecie(especie: EspecieFruta): FirmezaUnidad | undefined {
+  switch (especie) {
+    case EspecieFruta.MANZANA:
+    case EspecieFruta.PERA:
+      return FirmezaUnidad.KGF;
+    case EspecieFruta.CEREZA:
+      return FirmezaUnidad.UD_DUROFEL;
+    case EspecieFruta.KIWI:
+      return FirmezaUnidad.LBS;
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Devuelve un texto de aviso si la firmeza de kiwi está bajo el mínimo

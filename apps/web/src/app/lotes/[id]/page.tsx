@@ -5,9 +5,12 @@ import TopBar from "@/components/TopBar";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EspecieTag } from "@/components/ui/EspecieTag";
+import { BotonEliminar } from "@/components/ui/BotonEliminar";
 import { prisma } from "@/lib/prisma";
+import { esAdmin, getCurrentUser } from "@/lib/auth";
 import { resultadoStatusMap, resultadoLabels, mercadoDestinoLabels } from "@/lib/labels";
 import { formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
+import { eliminarLote } from "../actions";
 
 export default async function LoteDetallePage({
   params,
@@ -16,18 +19,27 @@ export default async function LoteDetallePage({
 }) {
   const { id } = await params;
 
-  const lote = await prisma.lote.findUnique({
-    where: { id },
-    include: {
-      cliente: true,
-      inspecciones: {
-        include: { inspector: true },
-        orderBy: { fecha: "desc" },
+  const [lote, usuario] = await Promise.all([
+    prisma.lote.findUnique({
+      where: { id },
+      include: {
+        cliente: true,
+        inspecciones: {
+          include: { inspector: true },
+          orderBy: { fecha: "desc" },
+        },
       },
-    },
-  });
+    }),
+    getCurrentUser(),
+  ]);
 
   if (!lote) notFound();
+  const puedeEditar = esAdmin(usuario);
+  const nInspecciones = lote.inspecciones.length;
+  const mensajeConfirmacion =
+    nInspecciones > 0
+      ? `¿Eliminar el lote "${lote.codigo}"? Esto también eliminará sus ${nInspecciones} inspección(es) asociada(s). Esta acción no se puede deshacer.`
+      : `¿Eliminar el lote "${lote.codigo}"? Esta acción no se puede deshacer.`;
 
   const valores = lote.inspecciones
     .map((i) => i.porcentajeRechazo)
@@ -39,9 +51,26 @@ export default async function LoteDetallePage({
     <>
       <TopBar title={`Lote ${lote.codigo}`} />
       <main className="flex-1 space-y-6 px-4 py-6 md:px-8">
-        <Link href="/lotes" className="text-sm text-brand-700 hover:underline dark:text-brand-500">
-          ← Volver a lotes
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/lotes" className="text-sm text-brand-700 hover:underline dark:text-brand-500">
+            ← Volver a lotes
+          </Link>
+          {puedeEditar ? (
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/lotes/${lote.id}/editar`}
+                className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface"
+              >
+                Editar
+              </Link>
+              <BotonEliminar
+                action={eliminarLote}
+                hiddenFields={{ loteId: lote.id }}
+                confirmMessage={mensajeConfirmacion}
+              />
+            </div>
+          ) : null}
+        </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card>
