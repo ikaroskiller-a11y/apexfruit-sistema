@@ -5,8 +5,19 @@ fruta de exportación (manzana, uva de mesa, cereza, arándano, entre otras) —
 Apex Fruit SPA, Curicó/Teno, Región del Maule.
 
 Es una base funcional pensada para iterar rápido, no un producto terminado.
-El diseño visual "pulido" lo define otro workstream (`docs/design`); acá la
-prioridad fue que **funcione de punta a punta** con datos reales de Prisma.
+El diseño visual sigue `docs/design/guia-diseno.md`; acá la prioridad fue
+que **funcione de punta a punta** con datos reales de Prisma.
+
+**Dos cosas a leer antes de tocar código:**
+
+- **Next.js 16 es muy reciente y rompe compatibilidad** con bastante de lo
+  que la mayoría de la gente (y los modelos de lenguaje) da por sentado de
+  versiones anteriores. Antes de escribir rutas, middleware o App Router
+  nuevo, revisar `apps/web/AGENTS.md` y `node_modules/next/dist/docs/`.
+- **No hay tests todavía** (ver punto 10 de "Qué falta por hacer"). Si vas a
+  modificar lógica existente (server actions, `src/lib/normas.ts`,
+  `src/lib/validation.ts`), probar a mano el flujo antes de dar por buena
+  una refactorización.
 
 ## Stack
 
@@ -77,18 +88,23 @@ apps/web/
 ├── src/
 │   ├── app/
 │   │   ├── dashboard/       # Gráficos: rechazo por lote, evolución, comparativas
-│   │   ├── inspecciones/    # Listado (con filtros), detalle, formulario "nueva"
-│   │   ├── lotes/           # Listado y detalle de lotes/partidas
-│   │   ├── clientes/        # Listado y detalle de clientes/exportadoras
+│   │   ├── inspecciones/    # Listado paginado (con filtros), detalle, reporte
+│   │   │   ├── InspeccionForm.tsx  # Formulario compartido (crear y editar)
+│   │   │   ├── nueva/       # Crear inspección
+│   │   │   └── [id]/        # Detalle, editar, eliminar, reporte imprimible
+│   │   ├── lotes/           # Listado paginado, alta, edición, eliminación
+│   │   ├── clientes/        # Listado, alta, edición, eliminación
 │   │   └── login/           # Login (email + password) y logout
 │   ├── components/          # Sidebar, TopBar, gráficos, UI genérica
 │   ├── proxy.ts             # Protege rutas: sin sesión válida, redirige a /login
 │   └── lib/
-│       ├── auth.ts          # Sesión, login/logout, validación de credenciales
+│       ├── auth.ts          # Sesión, login/logout, validación de credenciales, esAdmin()
 │       ├── session.ts       # Firma/verificación del JWT de sesión (usa `jose`)
 │       ├── prisma.ts        # Cliente Prisma singleton
 │       ├── queries.ts       # Agregaciones para el dashboard
-│       └── labels.ts        # Traducciones/labels de los enums de Prisma
+│       ├── labels.ts        # Traducciones/labels de los enums de Prisma
+│       ├── normas.ts        # Firmeza por especie, catálogo de defectos de cereza
+│       └── validation.ts    # Esquemas zod + tipo `FormState` compartido por los server actions
 └── public/uploads/          # Fotos subidas desde el formulario de inspección
 ```
 
@@ -98,9 +114,13 @@ apps/web/
   `passwordHash` (bcrypt) — ver "Cómo loguearse en local" arriba.
 - **Cliente**: exportadora/comprador de la fruta.
 - **Lote**: partida de fruta — especie, variedad, productor, packing,
-  temporada, cliente asociado.
-- **Inspección**: evaluación de un lote — calibre, color, firmeza, °Brix,
-  % de rechazo, resultado, observaciones. Asociada a un inspector.
+  temporada, cliente asociado, mercado destino.
+- **Inspección**: evaluación de un lote — calibre, color, firmeza (unidad
+  según especie: kgF, grados Durofel o libras — ver `firmezaUnidad`), °Brix,
+  % de rechazo, resultado (`CATEGORIA_1` / `CATEGORIA_2` / `OBJETADO`),
+  parámetros de hidroenfriado para cereza, observaciones. Asociada a un
+  inspector; editable/eliminable por su propio inspector o cualquier
+  administrador.
 - **Defecto**: defectos encontrados en una inspección (pudrición, russet,
   magulladura, desgrane, etc.), con % y cantidad.
 - **Foto**: fotos adjuntas a una inspección (se guardan en
@@ -126,37 +146,45 @@ menos en orden de prioridad:
    la mayoría de plataformas de hosting sin disco persistente. Migrar a un
    bucket (S3, Cloudflare R2, Vercel Blob, etc.).
 4. **Exportar reportes a PDF/Excel** (por lote, por cliente, por temporada)
-   — típicamente lo primero que pide un cliente exportador.
-5. **Creación/edición de Lotes y Clientes desde la UI** — hoy solo se pueden
-   ver (se crean por seed o directo en la base). El formulario de nueva
-   inspección asume que el lote ya existe.
-6. **Edición y eliminación de inspecciones** (hoy solo se crean y consultan).
-7. **Roles y permisos** — hoy `Usuario.rol` solo restringe a quién puede
-   figurar como inspector en una inspección nueva (un INSPECTOR solo puede
-   registrarla a su propio nombre). Cuando exista UI de crear/editar
-   clientes o lotes, restringirla a ADMINISTRADOR con el mismo patrón
-   (`esAdmin()` en `src/lib/auth.ts`).
-8. **Validación de formularios** más robusta (hoy es mínima, del lado
-   servidor) — considerar `zod` para los server actions.
-9. **Paginación** en los listados (inspecciones/lotes) cuando el volumen de
-   datos crezca — hoy el listado de inspecciones trae hasta 200 filas.
+   — típicamente lo primero que pide un cliente exportador. Hoy existe un
+   reporte imprimible (`/inspecciones/[id]/reporte`, vía `window.print()`)
+   pensado para el equipo interno, no un export real a PDF/Excel
+   descargable — ver recomendación y estimación de esfuerzo en
+   `docs/research/integraciones-recomendadas.md`.
+5. ~~**Creación/edición de Lotes y Clientes desde la UI.**~~ Hecho: alta,
+   edición y eliminación completas (`src/app/lotes/`, `src/app/clientes/`),
+   restringidas a ADMINISTRADOR.
+6. ~~**Edición y eliminación de inspecciones.**~~ Hecho
+   (`src/app/inspecciones/[id]/actions.ts`) — un INSPECTOR solo puede
+   editar/eliminar las suyas, un ADMINISTRADOR cualquiera. No existe hoy un
+   concepto de inspección "cerrada" que bloquee la edición una vez enviado
+   el reporte al cliente — evaluar si hace falta antes de que eso pase en
+   producción.
+7. ~~**Roles y permisos.**~~ Hecho para todo el CRUD existente (patrón
+   `esAdmin()` en `src/lib/auth.ts`, aplicado en lotes/clientes/inspecciones).
+8. ~~**Validación de formularios más robusta.**~~ Hecho con `zod`
+   (`src/lib/validation.ts`), con mensajes de error en español mostrados en
+   la UI, no solo en consola.
+9. ~~**Paginación**~~ en inspecciones y lotes. Falta agregarla al listado de
+   clientes si el volumen lo llega a justificar (hoy son solo 5).
 10. **Tests** — no hay tests todavía.
+11. **Modo offline / PWA** para inspección en terreno con conectividad
+    intermitente — ver `docs/research/requisitos.md` (recomendación de
+    plataforma) y `docs/research/usabilidad-control-calidad.md`.
 
-## Paleta de marca
+## Sistema de diseño
 
-Definida como tokens de Tailwind en `src/app/globals.css`:
+Guía completa en `docs/design/guia-diseno.md` (paleta, tipografía IBM Plex,
+reglas de formularios largos y navegación mobile) — ya aplicada a `apps/web`,
+no es un pendiente. Los tokens viven en `src/app/globals.css` como variables
+CSS (`--color-*`), con valores distintos para modo claro y oscuro:
 
-| Token             | Hex       | Uso                          |
-| ------------------ | --------- | ----------------------------- |
-| `brand-950`         | `#0f2a20` | Sidebar, fondos oscuros       |
-| `brand-800`         | `#164735` | Hover, textos destacados      |
-| `brand-700`         | `#1f6b49` | Botones primarios, acentos    |
-| `brand-500`         | `#3e9b63` | Elementos secundarios         |
-| `brand-leaf`        | `#a6c84f` | Acento activo/positivo        |
-| `brand-gold`        | `#e7a93d` | Acento de advertencia/dorado  |
-| `cream`             | `#f6f1e5` | Fondo general de la app       |
-| `paper`             | `#fffdf8` | Tarjetas, superficies         |
-| `ink`               | `#15211b` | Texto principal               |
+| Grupo                     | Ejemplos de token                                              | Uso                                    |
+| -------------------------- | ---------------------------------------------------------------- | ---------------------------------------- |
+| Marca                      | `--color-brand-950` … `--color-brand-500`, `-leaf`, `-gold`      | Sidebar, botones primarios, acentos     |
+| Superficie / texto         | `--color-surface`, `-card`, `-card-alt`, `-fg`, `-fg-muted`, `-border` | Fondos, tarjetas, texto, bordes    |
+| Estados semánticos         | `--color-state-success/warning/danger/info` (+ `-bg`)            | Badges, alertas — siempre con ícono + texto, nunca solo color |
+| Categórico por variedad    | `--color-variedad-manzana/pera/cereza/kiwi/otro`                 | Series de gráficos, orden fijo entre pantallas |
 
-Cuando el otro workstream (`docs/design`) entregue el sistema de diseño
-definitivo, estos tokens son el punto de partida para reemplazar/ajustar.
+Cualquier UI nueva debe reusar estos tokens (y los componentes de
+`src/components/ui/`) en vez de definir colores sueltos.
