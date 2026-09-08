@@ -30,7 +30,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label="Cambiar entre modo claro y modo oscuro"
       title="Cambiar modo claro / oscuro"
-      className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-fg-muted transition-colors hover:border-brand-500/50 hover:text-fg"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-fg-muted transition-colors hover:border-brand-500/50 hover:text-fg"
     >
       <Sun className="h-4 w-4 dark:hidden" aria-hidden="true" />
       <Moon className="hidden h-4 w-4 dark:block" aria-hidden="true" />

@@ -15,7 +15,7 @@ export default async function TopBar({ title }: { title: string }) {
         <ThemeToggle />
 
         {user ? (
-          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-fg">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-1 pl-3 text-sm text-fg">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-700 text-[10px] font-semibold text-cream">
               {user.nombre
                 .split(" ")
@@ -31,9 +31,9 @@ export default async function TopBar({ title }: { title: string }) {
                 type="submit"
                 title="Cerrar sesión"
                 aria-label="Cerrar sesión"
-                className="flex h-6 w-6 items-center justify-center rounded-full text-fg-muted hover:bg-card-alt hover:text-fg"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-card-alt hover:text-fg"
               >
-                <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                <LogOut className="h-4 w-4" aria-hidden="true" />
               </button>
             </form>
           </div>

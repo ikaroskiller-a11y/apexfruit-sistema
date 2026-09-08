@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Plus } from "lucide-react";
 import { navLinks } from "./nav-links";
 
 function isActive(pathname: string, href: string) {
@@ -47,12 +48,15 @@ export default function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`block rounded-lg px-3 py-2 text-sm font-medium tracking-tight transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium tracking-tight transition-colors ${
                 active
                   ? "bg-brand-leaf text-brand-950"
-                  : "text-cream/80 hover:bg-brand-800 hover:text-cream"
+                  : link.primaria
+                    ? "bg-brand-gold/90 text-brand-950 hover:bg-brand-gold"
+                    : "text-cream/80 hover:bg-brand-800 hover:text-cream"
               }`}
             >
+              {link.primaria ? <Plus className="h-4 w-4 shrink-0" aria-hidden /> : null}
               {link.label}
             </Link>
           );
