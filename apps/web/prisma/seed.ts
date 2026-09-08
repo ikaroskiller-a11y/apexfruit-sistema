@@ -131,11 +131,11 @@ async function main() {
 
   console.log("Creando clientes...");
   const clientesData = [
-    { nombre: "Del Monte Fresh Produce", rut: "76.111.222-3" },
-    { nombre: "Unifrutti Traders", rut: "76.222.333-4" },
-    { nombre: "Subsole S.A.", rut: "76.333.444-5" },
-    { nombre: "Frutas de Chile Export", rut: "76.444.555-6" },
-    { nombre: "Copefrut", rut: "76.555.666-7" },
+    { nombre: "Exportadora Los Aromos", rut: "76.111.222-3" },
+    { nombre: "Comercial Valle Fértil", rut: "76.222.333-4" },
+    { nombre: "Agroindustrial Maule Sur", rut: "76.333.444-5" },
+    { nombre: "Frutícola Rincón del Sol", rut: "76.444.555-6" },
+    { nombre: "Exportadora Los Boldos", rut: "76.555.666-7" },
   ];
   const clientes = await Promise.all(
     clientesData.map((c) =>
