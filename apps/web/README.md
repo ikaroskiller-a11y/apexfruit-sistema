@@ -24,9 +24,14 @@ que **funcione de punta a punta** con datos reales de Prisma.
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
 - **Tailwind CSS v4** (paleta de marca de Apex Fruit como tokens en
   `src/app/globals.css`)
-- **Prisma 6** + **SQLite** para desarrollo local (sin dependencias externas,
-  el archivo de base de datos vive en `prisma/dev.db`)
+- **Prisma 6** + **Postgres** (Neon, provisionado vía Vercel Marketplace) —
+  la misma base se usa en desarrollo y en producción
+- **Vercel Blob** para las fotos de inspección (Vercel no tiene disco
+  persistente; cae a `public/uploads/` si no hay `BLOB_READ_WRITE_TOKEN`,
+  útil solo para correr en un servidor propio)
 - **Recharts** para los gráficos del dashboard
+- Desplegado en **Vercel** — proyecto `apexfruit-sistema` bajo el equipo
+  `directai1`
 
 ## Cómo instalar y correr
 
@@ -34,17 +39,22 @@ que **funcione de punta a punta** con datos reales de Prisma.
 cd apps/web
 npm install
 
-# Variables de entorno: ruta de la BD SQLite local + AUTH_SECRET (clave
-# para firmar la cookie de sesión). Genera tu propia clave con:
+# Variables de entorno: si tienes acceso al proyecto de Vercel, la forma más
+# rápida de obtener DATABASE_URL/DIRECT_URL/BLOB_READ_WRITE_TOKEN reales es:
+#   vercel link
+#   vercel env pull .env.local
+# Si no, copia .env.example a .env y pon tu propia base Postgres (local o
+# Neon gratis) — genera AUTH_SECRET con:
 #   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 cp .env.example .env
-# y reemplaza AUTH_SECRET en .env con la clave generada.
 
-# Prepara la base de datos local (crea prisma/dev.db y aplica el schema)
+# Aplica el schema a la base de datos (crea las tablas si no existen)
 npm run db:migrate
 
 # Carga datos de ejemplo (clientes, lotes, inspecciones ficticias y
-# usuarios con password de demo — ver "Cómo loguearse en local" abajo)
+# usuarios con password de demo — ver "Cómo loguearse en local" abajo).
+# Ojo: esto BORRA los datos existentes en la base a la que apunte
+# DATABASE_URL — no correrlo apuntando a producción con datos reales.
 npm run db:seed
 
 # Levanta el servidor de desarrollo
@@ -104,8 +114,9 @@ apps/web/
 │       ├── queries.ts       # Agregaciones para el dashboard
 │       ├── labels.ts        # Traducciones/labels de los enums de Prisma
 │       ├── normas.ts        # Firmeza por especie, catálogo de defectos de cereza
-│       └── validation.ts    # Esquemas zod + tipo `FormState` compartido por los server actions
-└── public/uploads/          # Fotos subidas desde el formulario de inspección
+│       ├── validation.ts    # Esquemas zod + tipo `FormState` compartido por los server actions
+│       └── fotos.ts         # Guardar/borrar fotos: Vercel Blob, con fallback a filesystem local
+└── public/uploads/          # Fallback local de fotos (solo si no hay Vercel Blob configurado)
 ```
 
 ## Modelo de datos (resumen)
@@ -123,8 +134,8 @@ apps/web/
   administrador.
 - **Defecto**: defectos encontrados en una inspección (pudrición, russet,
   magulladura, desgrane, etc.), con % y cantidad.
-- **Foto**: fotos adjuntas a una inspección (se guardan en
-  `public/uploads/` en desarrollo).
+- **Foto**: fotos adjuntas a una inspección (en Vercel Blob; ver
+  `src/lib/fotos.ts`).
 
 ## Qué falta por hacer
 
@@ -137,14 +148,14 @@ menos en orden de prioridad:
    queda: recuperación de contraseña, expiración/renovación configurable
    más allá de los 7 días fijos, y un panel para que un admin cree/edite
    usuarios desde la UI (hoy solo se crean por seed o directo en la base).
-2. **Base de datos de producción.** Cambiar el `provider` del datasource en
-   `prisma/schema.prisma` de `sqlite` a `postgresql` (o el motor que se
-   defina) y correr `prisma migrate deploy` contra la BD real. SQLite es
-   solo para desarrollo local.
-3. **Almacenamiento de fotos en producción.** Ahora mismo las fotos se
-   guardan en el filesystem local (`public/uploads`), lo que no funciona en
-   la mayoría de plataformas de hosting sin disco persistente. Migrar a un
-   bucket (S3, Cloudflare R2, Vercel Blob, etc.).
+2. ~~**Base de datos de producción.**~~ Hecho: Postgres (Neon vía Vercel
+   Marketplace), misma base para desarrollo y producción por ahora. Si el
+   volumen lo justifica más adelante, separar un branch de Neon para
+   desarrollo.
+3. ~~**Almacenamiento de fotos en producción.**~~ Hecho: Vercel Blob
+   (`src/lib/fotos.ts`), con fallback a `public/uploads/` si no hay
+   `BLOB_READ_WRITE_TOKEN` configurado (solo sirve para un servidor propio
+   con disco persistente, no para Vercel).
 4. **Exportar reportes a PDF/Excel** (por lote, por cliente, por temporada)
    — típicamente lo primero que pide un cliente exportador. Hoy existe un
    reporte imprimible (`/inspecciones/[id]/reporte`, vía `window.print()`)

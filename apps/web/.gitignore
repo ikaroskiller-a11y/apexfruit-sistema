@@ -48,3 +48,12 @@ next-env.d.ts
 /prisma/*.db-journal
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+.vercel
+.env*
+
+# skills de agentes IA instaladas por integraciones de Vercel (regenerables
+# con `vercel integration add <nombre>`)
+.agents/
+.claude/skills/
+skills-lock.json

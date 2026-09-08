@@ -2,17 +2,17 @@
 // Sistema interno de inspección y control de calidad de fruta de exportación
 // (manzana, uva de mesa, cereza, arándano - Región del Maule)
 //
-// Motor local: SQLite (sin dependencias externas). Para producción, cambiar
-// el provider del datasource (ver README) a postgresql/mysql y actualizar
-// DATABASE_URL en prisma.config.ts / variables de entorno.
+// Motor: Postgres (Neon, vía Vercel Marketplace), compartido entre
+// desarrollo local y producción — ver README.md.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,13 +1,12 @@
 "use server";
 
-import { unlink } from "node:fs/promises";
-import path from "node:path";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EspecieFruta, ResultadoInspeccion } from "@prisma/client";
 import { evaluarResultadoCereza, firmezaUnidadPorEspecie } from "@/lib/normas";
 import { esAdmin, getCurrentUser, type SesionUsuario } from "@/lib/auth";
 import { inspeccionSchema, parsearDefectos, type FormState } from "@/lib/validation";
+import { borrarFoto, esImagenPermitida, guardarFoto } from "@/lib/fotos";
 
 function datosDesdeFormulario(formData: FormData) {
   return {
@@ -51,52 +50,17 @@ function puedeGestionar(usuario: SesionUsuario, inspectorId: string): boolean {
   return esAdmin(usuario) || usuario.id === inspectorId;
 }
 
-// Solo se aceptan imágenes: tanto la extensión del nombre como el MIME que
-// reporta el navegador deben estar en esta lista. Ninguno de los dos es
-// completamente confiable por separado, pero juntos evitan que alguien suba
-// un .html/.svg con script o un ejecutable disfrazado a `public/uploads`,
-// que Next sirve tal cual sin sanitizar.
-const EXTENSIONES_IMAGEN_PERMITIDAS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
-
-function esImagenPermitida(foto: File): boolean {
-  const ext = path.extname(foto.name).toLowerCase();
-  return EXTENSIONES_IMAGEN_PERMITIDAS.has(ext) && foto.type.startsWith("image/");
-}
-
 async function guardarFotosNuevas(inspeccionId: string, formData: FormData): Promise<void> {
   const fotos = formData
     .getAll("fotos")
     .filter((f): f is File => f instanceof File && f.size > 0 && esImagenPermitida(f));
   if (fotos.length === 0) return;
 
-  const { mkdir, writeFile } = await import("node:fs/promises");
-  const { randomUUID } = await import("node:crypto");
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
-
   for (const foto of fotos) {
-    const ext = path.extname(foto.name) || ".jpg";
-    const filename = `${randomUUID()}${ext}`;
-    const bytes = Buffer.from(await foto.arrayBuffer());
-    await writeFile(path.join(uploadsDir, filename), bytes);
-
+    const url = await guardarFoto(inspeccionId, foto);
     await prisma.foto.create({
-      data: {
-        inspeccionId,
-        url: `/uploads/${filename}`,
-        descripcion: foto.name,
-      },
+      data: { inspeccionId, url, descripcion: foto.name },
     });
-  }
-}
-
-/** Best-effort: si falla el borrado del archivo físico, no se interrumpe la operación. */
-async function borrarArchivoFoto(url: string): Promise<void> {
-  if (!url.startsWith("/uploads/")) return;
-  try {
-    await unlink(path.join(process.cwd(), "public", url));
-  } catch {
-    // Archivo ya no existe o no se pudo borrar — no es crítico.
   }
 }
 
@@ -222,7 +186,7 @@ export async function actualizarInspeccion(_prevState: FormState, formData: Form
       where: { id: { in: fotosAEliminar }, inspeccionId: id },
     });
     await prisma.foto.deleteMany({ where: { id: { in: fotosAEliminar }, inspeccionId: id } });
-    await Promise.all(fotos.map((f) => borrarArchivoFoto(f.url)));
+    await Promise.all(fotos.map((f) => borrarFoto(f.url)));
   }
   await guardarFotosNuevas(id, formData);
 
@@ -256,7 +220,7 @@ export async function eliminarInspeccion(_prevState: FormState, formData: FormDa
     return { error: "No se pudo eliminar la inspección. Intenta nuevamente." };
   }
 
-  await Promise.all(existente.fotos.map((f) => borrarArchivoFoto(f.url)));
+  await Promise.all(existente.fotos.map((f) => borrarFoto(f.url)));
 
   redirect("/inspecciones");
 }

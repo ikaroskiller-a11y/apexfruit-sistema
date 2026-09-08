@@ -1,14 +1,12 @@
 "use server";
 
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EspecieFruta, ResultadoInspeccion } from "@prisma/client";
 import { evaluarResultadoCereza, firmezaUnidadPorEspecie } from "@/lib/normas";
 import { getCurrentUser } from "@/lib/auth";
 import { inspeccionSchema, parsearDefectos, type FormState } from "@/lib/validation";
+import { esImagenPermitida, guardarFoto } from "@/lib/fotos";
 
 function datosDesdeFormulario(formData: FormData) {
   return {
@@ -42,40 +40,16 @@ function booleanoOpcional(formData: FormData, campo: string): boolean | undefine
   return undefined;
 }
 
-// Solo se aceptan imágenes: tanto la extensión del nombre como el MIME que
-// reporta el navegador deben estar en esta lista. Ninguno de los dos es
-// completamente confiable por separado (el nombre lo elige quien sube el
-// archivo, el MIME lo puede falsificar un cliente no-navegador), pero juntos
-// evitan que alguien suba un .html/.svg con script o un ejecutable disfrazado
-// a `public/uploads`, que Next sirve tal cual sin sanitizar.
-const EXTENSIONES_IMAGEN_PERMITIDAS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
-
-function esImagenPermitida(foto: File): boolean {
-  const ext = path.extname(foto.name).toLowerCase();
-  return EXTENSIONES_IMAGEN_PERMITIDAS.has(ext) && foto.type.startsWith("image/");
-}
-
 async function guardarFotos(inspeccionId: string, formData: FormData): Promise<void> {
   const fotos = formData
     .getAll("fotos")
     .filter((f): f is File => f instanceof File && f.size > 0 && esImagenPermitida(f));
   if (fotos.length === 0) return;
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
-
   for (const foto of fotos) {
-    const ext = path.extname(foto.name) || ".jpg";
-    const filename = `${randomUUID()}${ext}`;
-    const bytes = Buffer.from(await foto.arrayBuffer());
-    await writeFile(path.join(uploadsDir, filename), bytes);
-
+    const url = await guardarFoto(inspeccionId, foto);
     await prisma.foto.create({
-      data: {
-        inspeccionId,
-        url: `/uploads/${filename}`,
-        descripcion: foto.name,
-      },
+      data: { inspeccionId, url, descripcion: foto.name },
     });
   }
 }
