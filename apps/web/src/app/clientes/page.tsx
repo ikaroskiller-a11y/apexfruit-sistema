@@ -2,18 +2,34 @@ import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
+import { esAdmin, getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientesPage() {
-  const clientes = await prisma.cliente.findMany({
-    include: { _count: { select: { lotes: true } } },
-    orderBy: { nombre: "asc" },
-  });
+  const [clientes, usuario] = await Promise.all([
+    prisma.cliente.findMany({
+      include: { _count: { select: { lotes: true } } },
+      orderBy: { nombre: "asc" },
+    }),
+    getCurrentUser(),
+  ]);
 
   return (
     <>
-      <TopBar title="Clientes" />
+      <TopBar
+        title="Clientes"
+        actions={
+          esAdmin(usuario) ? (
+            <Link
+              href="/clientes/nuevo"
+              className="rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-cream hover:bg-brand-800"
+            >
+              + Nuevo cliente
+            </Link>
+          ) : null
+        }
+      />
       <main className="flex-1 px-4 py-6 md:px-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clientes.map((cliente) => (

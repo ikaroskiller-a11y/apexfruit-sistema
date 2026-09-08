@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EspecieTag } from "@/components/ui/EspecieTag";
 import { Field, inputClass } from "@/components/ui/FormField";
+import { Pagination } from "@/components/ui/Pagination";
 import { prisma } from "@/lib/prisma";
 import { resultadoStatusMap, resultadoLabels } from "@/lib/labels";
 import { formatFecha, formatPorcentaje } from "@/lib/format";
@@ -11,11 +12,14 @@ import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
+const POR_PAGINA = 25;
+
 type SearchParams = {
   clienteId?: string;
   loteCodigo?: string;
   desde?: string;
   hasta?: string;
+  page?: string;
 };
 
 export default async function InspeccionesPage({
@@ -24,6 +28,7 @@ export default async function InspeccionesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  const page = Math.max(1, Number(params.page) || 1);
 
   const where: Prisma.InspeccionWhereInput = {};
 
@@ -43,7 +48,7 @@ export default async function InspeccionesPage({
     };
   }
 
-  const [inspecciones, clientes] = await Promise.all([
+  const [inspecciones, totalInspecciones, clientes] = await Promise.all([
     prisma.inspeccion.findMany({
       where,
       include: {
@@ -51,10 +56,24 @@ export default async function InspeccionesPage({
         inspector: true,
       },
       orderBy: { fecha: "desc" },
-      take: 200,
+      skip: (page - 1) * POR_PAGINA,
+      take: POR_PAGINA,
     }),
+    prisma.inspeccion.count({ where }),
     prisma.cliente.findMany({ orderBy: { nombre: "asc" } }),
   ]);
+
+  const totalPaginas = Math.max(1, Math.ceil(totalInspecciones / POR_PAGINA));
+
+  function buildHref(p: number) {
+    const sp = new URLSearchParams();
+    if (params.clienteId) sp.set("clienteId", params.clienteId);
+    if (params.loteCodigo) sp.set("loteCodigo", params.loteCodigo);
+    if (params.desde) sp.set("desde", params.desde);
+    if (params.hasta) sp.set("hasta", params.hasta);
+    sp.set("page", String(p));
+    return `/inspecciones?${sp.toString()}`;
+  }
 
   return (
     <>
@@ -248,6 +267,13 @@ export default async function InspeccionesPage({
             </p>
           ) : null}
         </div>
+
+        <Pagination
+          page={page}
+          totalPages={totalPaginas}
+          totalItems={totalInspecciones}
+          buildHref={buildHref}
+        />
       </main>
     </>
   );
