@@ -29,6 +29,13 @@ const prisma = new PrismaClient();
 // fuera de desarrollo local.
 const DEMO_PASSWORD = "ApexFruit2026!";
 
+// Cuenta admin/admin extra, solo para pruebas rápidas en local (pedido
+// explícito del dueño mientras el sistema está en desarrollo interno) —
+// separada de la cuenta con nombre real de abajo para no mezclar datos de
+// demo "presentables" con una credencial obviamente de prueba.
+const ADMIN_TEST_EMAIL = "admin@apexfruit.cl";
+const ADMIN_TEST_PASSWORD = "admin";
+
 function rand<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -107,6 +114,15 @@ async function main() {
       nombre: "Francisca Rojas",
       email: "francisca.rojas@apexfruit.cl",
       passwordHash: demoPasswordHash,
+      rol: RolUsuario.ADMINISTRADOR,
+    },
+  });
+
+  await prisma.usuario.create({
+    data: {
+      nombre: "Administrador",
+      email: ADMIN_TEST_EMAIL,
+      passwordHash: await bcrypt.hash(ADMIN_TEST_PASSWORD, 10),
       rol: RolUsuario.ADMINISTRADOR,
     },
   });
@@ -433,7 +449,7 @@ async function main() {
   const totalLotes = await prisma.lote.count();
   const totalInspecciones = await prisma.inspeccion.count();
   console.log(
-    `Listo: usuario admin ${admin.email} (password: ${DEMO_PASSWORD}), ${clientes.length} clientes, ${totalLotes} lotes, ${totalInspecciones} inspecciones.`
+    `Listo: usuario admin ${admin.email} (password: ${DEMO_PASSWORD}) / ${ADMIN_TEST_EMAIL} (password: ${ADMIN_TEST_PASSWORD}), ${clientes.length} clientes, ${totalLotes} lotes, ${totalInspecciones} inspecciones.`
   );
 }
 

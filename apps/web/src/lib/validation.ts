@@ -15,6 +15,7 @@ import {
   EspecieFruta,
   MercadoDestino,
   ResultadoInspeccion,
+  RolUsuario,
   TipoDefecto,
 } from "@prisma/client";
 
@@ -151,6 +152,42 @@ export const clienteSchema = z.object({
 });
 
 export type ClienteInput = z.infer<typeof clienteSchema>;
+
+// ---------------------------------------------------------------------------
+// Usuario
+// ---------------------------------------------------------------------------
+
+/**
+ * Mínimo de 4 caracteres a propósito, sin exigir mayúsculas/números/símbolos:
+ * mientras el sistema esté en uso interno reducido, cuentas simples tipo
+ * "admin" deben poder crearse sin fricción. Endurecer esto (o agregar
+ * recuperación de contraseña) es trabajo pendiente, no un olvido — ver README
+ * "Qué falta por hacer".
+ */
+export const passwordSchema = z.preprocess(
+  stringOVacio,
+  z.optional(
+    z
+      .string({ error: "La contraseña debe ser texto." })
+      .min(4, "La contraseña debe tener al menos 4 caracteres.")
+      .max(100, "La contraseña no puede tener más de 100 caracteres.")
+  )
+);
+
+export const usuarioSchema = z.object({
+  nombre: textoRequerido("El nombre", { min: 2, max: 200 }),
+  email: z.preprocess(
+    stringOVacio,
+    z.string({ error: "El correo es obligatorio." }).pipe(
+      z.email("El correo electrónico no es válido.").max(200)
+    )
+  ),
+  password: passwordSchema,
+  rol: z.preprocess(stringOVacio, z.enum(RolUsuario, "Selecciona un rol válido.")),
+  activo: z.preprocess((v) => v === "on", z.boolean()),
+});
+
+export type UsuarioInput = z.infer<typeof usuarioSchema>;
 
 // ---------------------------------------------------------------------------
 // Lote

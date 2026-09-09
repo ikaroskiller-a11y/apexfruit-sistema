@@ -11,13 +11,15 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function Sidebar() {
+export default function Sidebar({ esAdmin = false }: { esAdmin?: boolean }) {
   const pathname = usePathname();
 
   // La página de login tiene su propio layout de pantalla completa (ver
   // src/app/login/page.tsx) — el layout raíz no distingue rutas públicas de
   // protegidas, así que el sidebar se oculta a sí mismo acá.
   if (pathname === "/login") return null;
+
+  const links = navLinks.filter((link) => !link.soloAdmin || esAdmin);
 
   return (
     <aside className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:border-r md:border-brand-800/10 md:bg-brand-950 md:text-cream print:hidden">
@@ -42,7 +44,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {navLinks.map((link) => {
+        {links.map((link) => {
           const active = isActive(pathname, link.href);
           return (
             <Link

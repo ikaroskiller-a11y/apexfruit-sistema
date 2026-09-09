@@ -73,6 +73,13 @@ comparten la misma contraseña de demostración:
 | ---------------------------------- | -------------- | ----------------- |
 | `francisca.rojas@apexfruit.cl`     | ADMINISTRADOR  | `ApexFruit2026!`  |
 | `inspector1@apexfruit.cl` (y 2-4)  | INSPECTOR      | `ApexFruit2026!`  |
+| `admin@apexfruit.cl`               | ADMINISTRADOR  | `admin`           |
+
+La cuenta `admin@apexfruit.cl` / `admin` es solo para pruebas rápidas en
+local mientras el sistema está en desarrollo interno — la validación de
+contraseña acepta cualquier password de 4+ caracteres a propósito (ver
+`passwordSchema` en `src/lib/validation.ts`). Endurecer esto antes de un uso
+real por el equipo.
 
 Un ADMINISTRADOR puede registrar una inspección a nombre de cualquier
 inspector (selector libre); un INSPECTOR solo puede registrarla a su propio
@@ -144,10 +151,13 @@ menos en orden de prioridad:
 
 1. ~~**Autenticación real.**~~ Hecho: sesión propia con cookie HTTP-only
    firmada (JWT vía `jose`) + `Usuario.passwordHash` (bcrypt), protegida por
-   `src/proxy.ts`. Ver "Cómo loguearse en local" arriba. Pendiente real que
-   queda: recuperación de contraseña, expiración/renovación configurable
-   más allá de los 7 días fijos, y un panel para que un admin cree/edite
-   usuarios desde la UI (hoy solo se crean por seed o directo en la base).
+   `src/proxy.ts`. Ver "Cómo loguearse en local" arriba. ~~Panel de
+   usuarios.~~ Hecho: `src/app/usuarios/` (listar, crear, editar, activar/
+   desactivar), admin-only incluso para ver el listado. La validación de
+   password es deliberadamente laxa (mínimo 4 caracteres) mientras el
+   sistema esté en uso interno reducido — ver nota en la tabla de arriba.
+   Pendiente real que queda: recuperación de contraseña y
+   expiración/renovación configurable más allá de los 7 días fijos.
 2. ~~**Base de datos de producción.**~~ Hecho: Postgres (Neon vía Vercel
    Marketplace), misma base para desarrollo y producción por ahora. Si el
    volumen lo justifica más adelante, separar un branch de Neon para

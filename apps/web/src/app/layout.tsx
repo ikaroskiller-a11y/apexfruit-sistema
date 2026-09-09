@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
+import { esAdmin, getCurrentUser } from "@/lib/auth";
 
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
@@ -44,7 +45,9 @@ const themeInitScript = `
 })();
 `;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const usuario = await getCurrentUser();
+
   return (
     <html
       lang="es-CL"
@@ -56,9 +59,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {themeInitScript}
         </Script>
         <div className="flex min-h-screen flex-col md:flex-row">
-          <Sidebar />
+          <Sidebar esAdmin={esAdmin(usuario)} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <MobileNav />
+            <MobileNav esAdmin={esAdmin(usuario)} />
             {children}
           </div>
         </div>

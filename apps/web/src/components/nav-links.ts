@@ -6,6 +6,10 @@ export type NavLink = {
   // tratamiento visual distinto (ícono "+") y así no compita en igualdad
   // con enlaces de solo consulta (Dashboard, Lotes, Clientes).
   primaria?: boolean;
+  // "Usuarios" es admin-only incluso para ver el listado (ver
+  // src/app/usuarios/page.tsx) — Sidebar/MobileNav lo ocultan a un INSPECTOR
+  // en vez de mostrar un link que solo lleva a un redirect.
+  soloAdmin?: boolean;
 };
 
 export const navLinks: NavLink[] = [
@@ -14,4 +18,5 @@ export const navLinks: NavLink[] = [
   { href: "/inspecciones/nueva", label: "Nueva inspección", primaria: true },
   { href: "/lotes", label: "Lotes" },
   { href: "/clientes", label: "Clientes" },
+  { href: "/usuarios", label: "Usuarios", soloAdmin: true },
 ];

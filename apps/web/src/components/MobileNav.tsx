@@ -6,11 +6,13 @@ import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { navLinks } from "./nav-links";
 
-export default function MobileNav() {
+export default function MobileNav({ esAdmin = false }: { esAdmin?: boolean }) {
   const pathname = usePathname();
 
   // Ver comentario equivalente en Sidebar.tsx.
   if (pathname === "/login") return null;
+
+  const links = navLinks.filter((link) => !link.soloAdmin || esAdmin);
 
   return (
     <div className="border-b border-brand-800/10 bg-brand-950 text-cream md:hidden print:hidden">
@@ -27,7 +29,7 @@ export default function MobileNav() {
         <span className="font-semibold">Apex Fruit</span>
       </div>
       <nav className="flex gap-1.5 overflow-x-auto px-3 pb-3">
-        {navLinks.map((link) => {
+        {links.map((link) => {
           const active =
             pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (
