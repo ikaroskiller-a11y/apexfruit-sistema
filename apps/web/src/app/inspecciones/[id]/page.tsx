@@ -12,6 +12,7 @@ import { esAdmin, getCurrentUser } from "@/lib/auth";
 import {
   resultadoStatusMap,
   resultadoLabels,
+  etapaInspeccionLabels,
   tipoDefectoLabels,
   firmezaUnidadLabels,
   mercadoDestinoLabels,
@@ -77,6 +78,9 @@ export default async function InspeccionDetallePage({
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-fg-muted">
+              {etapaInspeccionLabels[inspeccion.etapa]}
+            </span>
             <Badge status={resultadoStatusMap[inspeccion.resultado]}>
               {resultadoLabels[inspeccion.resultado]}
             </Badge>

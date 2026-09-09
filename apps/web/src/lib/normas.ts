@@ -1,4 +1,4 @@
-import { EspecieFruta, FirmezaUnidad, type MercadoDestino, type TipoDefecto } from "@prisma/client";
+import { EspecieFruta, FirmezaUnidad, TipoDefecto, type MercadoDestino } from "@prisma/client";
 import { mercadoDestinoLabels } from "@/lib/labels";
 
 /**
@@ -48,8 +48,143 @@ export const categoriaDefecto: Record<TipoDefecto, CategoriaDefecto> = {
   INMADURO: "CALIDAD",
   DANO_GRANIZO: "CALIDAD",
   DESGRANE: "CONDICION",
-  BLANDURA: "CONDICION",
+  BLANDURA: "CONDICION", // ablandamiento fisiológico, evoluciona en tránsito
   OTRO: "CONDICION",
+
+  // Catálogo ampliado manzana/pera/kiwi — clasificación tomada directo de la
+  // columna "Q/C" (USDA Quality/Condition) de
+  // docs/research/estandares-defectos-calidad.md §4: Quality = permanente,
+  // ya estaba al empacar => CALIDAD; Condition = puede aparecer/agravarse en
+  // tránsito => CONDICIÓN.
+  CORTE_HERIDA: "CALIDAD",
+  ROCE_RAMA: "CALIDAD",
+  PICADURA_INSECTO_SANA: "CALIDAD",
+  PERFORACION_GUSANO: "CALIDAD",
+  DANO_ACARO: "CALIDAD",
+  DANO_ESCAMA: "CALIDAD",
+  PUDRICION_AZUL: "CONDICION",
+  PUDRICION_GRIS: "CONDICION",
+  PUDRICION_AMARGA: "CONDICION",
+  PUDRICION_MUCOR: "CONDICION",
+  PUDRICION_PEDUNCULAR: "CONDICION",
+  BITTER_PIT: "CALIDAD",
+  ESCALDADO_SUPERFICIAL: "CONDICION",
+  ESCALDADO_SENESCENTE: "CONDICION",
+  CORAZON_ACUOSO: "CALIDAD",
+  MANCHA_CORCHOSA_ANJOU: "CALIDAD",
+  DEGENERACION_PULPA: "CONDICION",
+  DANO_FRIO: "CONDICION",
+  DEFECTO_COLOR: "CALIDAD",
+  FRUTA_APLANADA: "CALIDAD",
+  MARCHITAMIENTO: "CONDICION", // pérdida de agua progresiva, igual criterio que PEDICELO_SECO
+};
+
+// ---------------------------------------------------------------------------
+// Defectos relevantes por especie — usado para filtrar el selector de
+// "Tipo de defecto" en el formulario de inspección (evita mostrar el
+// catálogo completo, con términos de otra especie, en cada fila).
+// ---------------------------------------------------------------------------
+
+/** Comodines disponibles para cualquier especie. */
+const defectosComodin: TipoDefecto[] = [TipoDefecto.OTRO];
+
+export const defectosPorEspecie: Record<EspecieFruta, TipoDefecto[]> = {
+  MANZANA: [
+    TipoDefecto.MAGULLADURA,
+    TipoDefecto.PITTING,
+    TipoDefecto.CORTE_HERIDA,
+    TipoDefecto.ROCE_RAMA,
+    TipoDefecto.DANO_GRANIZO,
+    TipoDefecto.QUEMADURA_SOL,
+    TipoDefecto.PICADURA_INSECTO_SANA,
+    TipoDefecto.PERFORACION_GUSANO,
+    TipoDefecto.DANO_ESCAMA,
+    TipoDefecto.PUDRICION_AZUL,
+    TipoDefecto.PUDRICION_GRIS,
+    TipoDefecto.PUDRICION_AMARGA,
+    TipoDefecto.PUDRICION_MUCOR,
+    TipoDefecto.BITTER_PIT,
+    TipoDefecto.ESCALDADO_SUPERFICIAL,
+    TipoDefecto.CORAZON_ACUOSO,
+    TipoDefecto.RUSSET,
+    TipoDefecto.DEFORME,
+    TipoDefecto.MANCHA,
+    TipoDefecto.DEFECTO_COLOR,
+    ...defectosComodin,
+  ],
+  PERA: [
+    TipoDefecto.MAGULLADURA,
+    TipoDefecto.PITTING,
+    TipoDefecto.CORTE_HERIDA,
+    TipoDefecto.ROCE_RAMA,
+    TipoDefecto.PICADURA_INSECTO_SANA,
+    TipoDefecto.PERFORACION_GUSANO,
+    TipoDefecto.DANO_ACARO,
+    TipoDefecto.PUDRICION_AZUL,
+    TipoDefecto.PUDRICION_GRIS,
+    TipoDefecto.ESCALDADO_SUPERFICIAL,
+    TipoDefecto.ESCALDADO_SENESCENTE,
+    TipoDefecto.MANCHA_CORCHOSA_ANJOU,
+    TipoDefecto.DEGENERACION_PULPA,
+    TipoDefecto.RUSSET,
+    TipoDefecto.DEFORME,
+    TipoDefecto.MANCHA,
+    ...defectosComodin,
+  ],
+  KIWI: [
+    TipoDefecto.MAGULLADURA,
+    TipoDefecto.PITTING,
+    TipoDefecto.CORTE_HERIDA,
+    TipoDefecto.ROCE_RAMA,
+    TipoDefecto.PARTIDURA_CRACKING,
+    TipoDefecto.DANO_ESCAMA,
+    TipoDefecto.PUDRICION_GRIS,
+    TipoDefecto.PUDRICION_PEDUNCULAR,
+    TipoDefecto.DANO_FRIO,
+    TipoDefecto.BLANDURA,
+    TipoDefecto.DEFORME,
+    TipoDefecto.FRUTA_APLANADA,
+    TipoDefecto.MARCHITAMIENTO,
+    TipoDefecto.INMADURO,
+    ...defectosComodin,
+  ],
+  // Catálogo real de campo, sin cambios (ver comentario del enum en el schema).
+  CEREZA: [
+    TipoDefecto.RUSSET,
+    TipoDefecto.FUERA_DE_COLOR,
+    TipoDefecto.AUSENCIA_PEDICELO,
+    TipoDefecto.DEFORME,
+    TipoDefecto.MANCHA,
+    TipoDefecto.SOBREMADURO,
+    TipoDefecto.PARTIDURA_CRACKING,
+    TipoDefecto.HERIDA_ABIERTA,
+    TipoDefecto.PUDRICION_HUMEDA,
+    TipoDefecto.PUDRICION_SECA,
+    TipoDefecto.PITTING,
+    TipoDefecto.MAGULLADURA,
+    TipoDefecto.PEDICELO_SECO,
+    TipoDefecto.MEDIALUNA,
+    TipoDefecto.QUEMADURA_SOL,
+    ...defectosComodin,
+  ],
+  // Especies fuera del alcance de esta ampliación: se dejan con el catálogo
+  // legado que ya tenían más el comodín, para no perder opciones existentes.
+  UVA_DE_MESA: [
+    TipoDefecto.DESGRANE,
+    TipoDefecto.PEDICELO_SECO,
+    TipoDefecto.PUDRICION_HUMEDA,
+    TipoDefecto.PARTIDURA_CRACKING,
+    ...defectosComodin,
+  ],
+  ARANDANO: [
+    TipoDefecto.BLANDURA,
+    TipoDefecto.PUDRICION_HUMEDA,
+    TipoDefecto.INMADURO,
+    TipoDefecto.MANCHA,
+    ...defectosComodin,
+  ],
+  CIRUELA: [TipoDefecto.MAGULLADURA, TipoDefecto.PARTIDURA_CRACKING, ...defectosComodin],
+  OTRO: defectosComodin,
 };
 
 // ---------------------------------------------------------------------------
@@ -200,4 +335,42 @@ export function avisoFirmezaKiwi(
     return `Bajo el mínimo exigido para ${mercadoDestinoLabels[mercado]} (${minimo} lb)`;
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Tamaño de muestra sugerido (plan de muestreo simplificado, USDA/ISO 2859)
+// ---------------------------------------------------------------------------
+
+/**
+ * Tramos de tamaño de lote (n° de cajas) y n° de cajas a muestrear, según el
+ * plan de muestreo simplificado de docs/research/estandares-defectos-calidad.md
+ * §2.1/2.3 (USDA Lot Single Sampling Plan, tamaño de unidad de muestra = 6):
+ * 6/13/21/29 cajas según el tramo del lote.
+ *
+ * La fuente da los 4 tramos (pequeño/mediano/grande/muy grande) y sus
+ * tamaños de muestra, pero no publica los cortes exactos de n° de cajas por
+ * tramo para un producto genérico (varían por commodity en la tabla oficial
+ * completa) — los cortes de abajo son una aproximación razonable propia,
+ * no un dato tomado literal de la fuente.
+ */
+const TRAMOS_MUESTREO: { hastaCajas: number; cajasMuestra: number }[] = [
+  { hastaCajas: 500, cajasMuestra: 6 },
+  { hastaCajas: 1200, cajasMuestra: 13 },
+  { hastaCajas: 3200, cajasMuestra: 21 },
+  { hastaCajas: Infinity, cajasMuestra: 29 },
+];
+
+/**
+ * N° de cajas mínimo sugerido para muestrear, dado el tamaño total del lote
+ * (en cajas). Cada caja de muestra implica revisar ~6 frutos, así que el
+ * mínimo de frutos sugerido es `cajasMuestra * 6`. Devuelve `null` si no hay
+ * `cajasTotales` con qué comparar — este cálculo es solo una guía en la UI,
+ * nunca bloquea el guardado.
+ */
+export function tamanoMuestraSugerido(
+  cajasTotales: number | null | undefined
+): { cajasMuestra: number; frutosMinimos: number } | null {
+  if (cajasTotales === null || cajasTotales === undefined || cajasTotales <= 0) return null;
+  const tramo = TRAMOS_MUESTREO.find((t) => cajasTotales <= t.hastaCajas)!;
+  return { cajasMuestra: tramo.cajasMuestra, frutosMinimos: tramo.cajasMuestra * 6 };
 }

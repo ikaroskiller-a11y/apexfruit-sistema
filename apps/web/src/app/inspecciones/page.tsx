@@ -6,9 +6,14 @@ import { EspecieTag } from "@/components/ui/EspecieTag";
 import { Field, inputClass } from "@/components/ui/FormField";
 import { Pagination } from "@/components/ui/Pagination";
 import { prisma } from "@/lib/prisma";
-import { resultadoStatusMap, resultadoLabels } from "@/lib/labels";
+import {
+  resultadoStatusMap,
+  resultadoLabels,
+  etapaInspeccionLabels,
+  etapaInspeccionOptions,
+} from "@/lib/labels";
 import { formatFecha, formatPorcentaje } from "@/lib/format";
-import type { Prisma } from "@prisma/client";
+import type { EtapaInspeccion, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +22,7 @@ const POR_PAGINA = 25;
 type SearchParams = {
   clienteId?: string;
   loteCodigo?: string;
+  etapa?: string;
   desde?: string;
   hasta?: string;
   page?: string;
@@ -40,6 +46,9 @@ export default async function InspeccionesPage({
       ...(where.lote as Prisma.LoteWhereInput),
       codigo: { contains: params.loteCodigo },
     };
+  }
+  if (params.etapa) {
+    where.etapa = params.etapa as EtapaInspeccion;
   }
   if (params.desde || params.hasta) {
     where.fecha = {
@@ -69,6 +78,7 @@ export default async function InspeccionesPage({
     const sp = new URLSearchParams();
     if (params.clienteId) sp.set("clienteId", params.clienteId);
     if (params.loteCodigo) sp.set("loteCodigo", params.loteCodigo);
+    if (params.etapa) sp.set("etapa", params.etapa);
     if (params.desde) sp.set("desde", params.desde);
     if (params.hasta) sp.set("hasta", params.hasta);
     sp.set("page", String(p));
@@ -80,7 +90,7 @@ export default async function InspeccionesPage({
       <TopBar title="Inspecciones" />
       <main className="flex-1 space-y-6 px-4 py-6 md:px-8">
         <Card className="!p-4">
-          <form className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <form className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <Field label="Cliente">
               <select
                 name="clienteId"
@@ -104,6 +114,17 @@ export default async function InspeccionesPage({
                 defaultValue={params.loteCodigo ?? ""}
                 className={`${inputClass} font-mono`}
               />
+            </Field>
+
+            <Field label="Etapa">
+              <select name="etapa" defaultValue={params.etapa ?? ""} className={inputClass}>
+                <option value="">Todas</option>
+                {etapaInspeccionOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
             </Field>
 
             <Field label="Desde">
@@ -152,6 +173,7 @@ export default async function InspeccionesPage({
                   <th className="px-4 py-2.5">Especie / Variedad</th>
                   <th className="px-4 py-2.5">Cliente</th>
                   <th className="px-4 py-2.5">Inspector</th>
+                  <th className="px-4 py-2.5">Etapa</th>
                   <th className="px-4 py-2.5 text-right">°Brix</th>
                   <th className="px-4 py-2.5 text-right">% Rechazo</th>
                   <th className="px-4 py-2.5">Resultado</th>
@@ -185,6 +207,9 @@ export default async function InspeccionesPage({
                       <td className="whitespace-nowrap px-4 py-2.5">
                         {insp.inspector.nombre}
                       </td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-fg-muted">
+                        {etapaInspeccionLabels[insp.etapa]}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-2.5 text-right font-mono tabular-nums">
                         {insp.brixGrados ?? "—"}
                       </td>
@@ -209,7 +234,7 @@ export default async function InspeccionesPage({
                 })}
                 {inspecciones.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-fg-muted">
+                    <td colSpan={10} className="px-4 py-10 text-center text-fg-muted">
                       No hay inspecciones que calcen con el filtro.
                     </td>
                   </tr>
@@ -252,6 +277,8 @@ export default async function InspeccionesPage({
                     <dd className="text-right text-fg">{insp.lote.cliente.nombre}</dd>
                     <dt className="text-fg-muted">Inspector</dt>
                     <dd className="text-right text-fg">{insp.inspector.nombre}</dd>
+                    <dt className="text-fg-muted">Etapa</dt>
+                    <dd className="text-right text-fg">{etapaInspeccionLabels[insp.etapa]}</dd>
                     <dt className="text-fg-muted">% Rechazo</dt>
                     <dd className="text-right font-mono tabular-nums text-fg">
                       {formatPorcentaje(insp.porcentajeRechazo)}

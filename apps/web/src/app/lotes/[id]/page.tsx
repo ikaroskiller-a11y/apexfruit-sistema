@@ -8,7 +8,12 @@ import { EspecieTag } from "@/components/ui/EspecieTag";
 import { BotonEliminar } from "@/components/ui/BotonEliminar";
 import { prisma } from "@/lib/prisma";
 import { esAdmin, getCurrentUser } from "@/lib/auth";
-import { resultadoStatusMap, resultadoLabels, mercadoDestinoLabels } from "@/lib/labels";
+import {
+  resultadoStatusMap,
+  resultadoLabels,
+  etapaInspeccionLabels,
+  mercadoDestinoLabels,
+} from "@/lib/labels";
 import { formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 import { eliminarLote } from "../actions";
 
@@ -137,6 +142,7 @@ export default async function LoteDetallePage({
               <thead className="sticky top-0 z-10 bg-card-header text-xs uppercase tracking-wide text-fg-muted">
                 <tr>
                   <th className="px-4 py-2.5">Fecha</th>
+                  <th className="px-4 py-2.5">Etapa</th>
                   <th className="px-4 py-2.5">Inspector</th>
                   <th className="px-4 py-2.5 text-right">% Rechazo</th>
                   <th className="px-4 py-2.5">Resultado</th>
@@ -156,6 +162,9 @@ export default async function LoteDetallePage({
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-2.5">{formatFecha(insp.fecha)}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-fg-muted">
+                        {etapaInspeccionLabels[insp.etapa]}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-2.5">{insp.inspector.nombre}</td>
                       <td className="whitespace-nowrap px-4 py-2.5 text-right font-mono tabular-nums">
                         {formatPorcentaje(insp.porcentajeRechazo)}
@@ -175,7 +184,7 @@ export default async function LoteDetallePage({
                 })}
                 {lote.inspecciones.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-fg-muted">
+                    <td colSpan={6} className="px-4 py-10 text-center text-fg-muted">
                       Este lote todavía no tiene inspecciones.
                     </td>
                   </tr>
@@ -205,7 +214,9 @@ export default async function LoteDetallePage({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-fg">{formatFecha(insp.fecha)}</p>
-                        <p className="text-xs text-fg-muted">{insp.inspector.nombre}</p>
+                        <p className="text-xs text-fg-muted">
+                          {insp.inspector.nombre} · {etapaInspeccionLabels[insp.etapa]}
+                        </p>
                       </div>
                       <Badge status={resultadoStatusMap[insp.resultado]}>
                         {resultadoLabels[insp.resultado]}

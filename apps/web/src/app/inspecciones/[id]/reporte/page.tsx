@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   especieLabels,
   resultadoLabels,
+  etapaInspeccionLabels,
   tipoDefectoLabels,
   firmezaUnidadLabels,
   mercadoDestinoLabels,
@@ -185,6 +186,7 @@ export default async function ReporteInspeccionPage({
           <SectionTitle>Parámetros de la inspección</SectionTitle>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
             <Field label="Fecha de inspección" value={formatFechaHora(inspeccion.fecha)} />
+            <Field label="Etapa" value={etapaInspeccionLabels[inspeccion.etapa]} />
             <Field label="Inspector responsable" value={inspeccion.inspector.nombre} />
             <Field label="Calibre" value={inspeccion.calibre ?? "—"} mono />
             <Field label="Color" value={inspeccion.color ?? "—"} />

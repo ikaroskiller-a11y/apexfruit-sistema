@@ -141,9 +141,19 @@ enum FirmezaUnidad {
   LBS
 }
 
+// Etapa del proceso de packing en que ocurrió la inspección (ver
+// docs/research/estandares-defectos-calidad.md §1 y §7): un lote pasa por
+// varias inspecciones en distintos puntos del flujo, no una sola.
+enum EtapaInspeccion {
+  RECEPCION
+  POST_HIDROENFRIADO
+  PRE_DESPACHO
+}
+
 model Inspeccion {
-  id        String   @id @default(cuid())
-  fecha     DateTime @default(now())
+  id        String          @id @default(cuid())
+  fecha     DateTime        @default(now())
+  etapa     EtapaInspeccion @default(RECEPCION)
 
   // Parámetros de calidad
   calibre        String? // ej: "70-75mm", "J", "XL", "Pre" (cereza)
@@ -217,13 +227,51 @@ enum TipoDefecto {
   MEDIALUNA // "Medialunas"
   QUEMADURA_SOL // "Golpe de sol"
 
-  // --- otras especies / legado (no forman parte del catálogo de cereza) ---
+  // --- compartidos entre especies / legado ---
+  // RUSSET, DEFORME, MANCHA, PARTIDURA_CRACKING, PITTING, MAGULLADURA,
+  // DANO_INSECTO y DANO_GRANIZO (arriba/abajo) también se usan para
+  // manzana/pera/kiwi: son el mismo defecto físico, ver
+  // src/lib/normas.ts#defectosPorEspecie.
   DANO_INSECTO
   INMADURO
   DANO_GRANIZO
   DESGRANE // uva de mesa
-  BLANDURA
+  BLANDURA // "Ablandamiento (pérdida de firmeza)" — softening fisiológico, kiwi
   OTRO
+
+  // --- Catálogo ampliado manzana/pera/kiwi (ver
+  // docs/research/estandares-defectos-calidad.md §4, USDA/UNECE/UC Davis) ---
+
+  // Daño mecánico
+  CORTE_HERIDA // Skin break / cut — todas
+  ROCE_RAMA // Limb/leaf rub — manzana, pera, kiwi
+
+  // Plagas / insectos
+  PICADURA_INSECTO_SANA // Healed insect sting — manzana, pera, kiwi
+  PERFORACION_GUSANO // Worm hole (codling moth) — manzana, pera, kiwi
+  DANO_ACARO // Blister mite injury — pera
+  DANO_ESCAMA // Scale damage — kiwi, manzana
+
+  // Pudriciones postcosecha (hongos)
+  PUDRICION_AZUL // Blue mold (Penicillium) — manzana, pera
+  PUDRICION_GRIS // Gray mold (Botrytis) — manzana, pera, kiwi
+  PUDRICION_AMARGA // Bitter rot (Colletotrichum) — manzana
+  PUDRICION_MUCOR // Mucor rot — manzana
+  PUDRICION_PEDUNCULAR // Stem-end rot — kiwi
+
+  // Desórdenes fisiológicos
+  BITTER_PIT // Picado amargo — manzana
+  ESCALDADO_SUPERFICIAL // Superficial scald — manzana, pera
+  ESCALDADO_SENESCENTE // Senescent scald — pera
+  CORAZON_ACUOSO // Watercore — manzana
+  MANCHA_CORCHOSA_ANJOU // Anjou cork spot — pera
+  DEGENERACION_PULPA // Core breakdown — pera
+  DANO_FRIO // Chilling injury — kiwi
+
+  // Forma, color y calibre
+  DEFECTO_COLOR // Color insuficiente para el grado/variedad — manzana
+  FRUTA_APLANADA // Flattened fruit — kiwi
+  MARCHITAMIENTO // Shriveling — kiwi
 }
 
 model Defecto {

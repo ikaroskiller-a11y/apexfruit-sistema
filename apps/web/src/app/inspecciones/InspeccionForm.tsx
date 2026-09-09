@@ -16,10 +16,12 @@ import {
 import {
   especieLabels,
   resultadoOptions,
-  tipoDefectoOptions,
+  etapaInspeccionOptions,
+  tipoDefectoLabels,
   calibresCereza,
   calibresCerezaPremiumAsia,
 } from "@/lib/labels";
+import { defectosPorEspecie, tamanoMuestraSugerido } from "@/lib/normas";
 import { Field, campoClase, FormErrorBanner } from "@/components/ui/FormField";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { ESTADO_INICIAL, type FormState } from "@/lib/validation";
@@ -31,6 +33,7 @@ type LoteOpcion = {
   codigo: string;
   variedad: string;
   especie: EspecieFruta;
+  cajasTotales: number | null;
   cliente: { nombre: string };
 };
 
@@ -56,6 +59,7 @@ export type InspeccionExistente = {
   loteId: string;
   inspectorId: string;
   fecha: Date;
+  etapa: string;
   resultado: string;
   calibre: string | null;
   color: string | null;
@@ -172,11 +176,34 @@ export default function InspeccionForm({
     setFotos(restantes);
   }
 
-  const especieSeleccionada = useMemo(
-    () => lotes.find((l) => l.id === loteId)?.especie,
+  const loteSeleccionado = useMemo(
+    () => lotes.find((l) => l.id === loteId),
     [lotes, loteId]
   );
+  const especieSeleccionada = loteSeleccionado?.especie;
   const esCereza = especieSeleccionada === "CEREZA";
+
+  // Opciones de "Tipo de defecto" filtradas por la especie del lote elegido
+  // (defectosPorEspecie, src/lib/normas.ts) — sin lote seleccionado se
+  // muestra el catálogo completo como respaldo.
+  const opcionesDefecto: [TipoDefecto, string][] = useMemo(() => {
+    const tipos = especieSeleccionada
+      ? defectosPorEspecie[especieSeleccionada]
+      : (Object.keys(tipoDefectoLabels) as TipoDefecto[]);
+    return tipos.map((t) => [t, tipoDefectoLabels[t]]);
+  }, [especieSeleccionada]);
+
+  // Aviso de tamaño de muestra sugerido (no bloqueante, ver
+  // src/lib/normas.ts#tamanoMuestraSugerido) comparado contra lo ingresado
+  // en "N° cajas muestreadas".
+  const [muestraCajasInput, setMuestraCajasInput] = useState(
+    inspeccion?.muestraCajas != null ? String(inspeccion.muestraCajas) : ""
+  );
+  const sugerenciaMuestra = tamanoMuestraSugerido(loteSeleccionado?.cajasTotales);
+  const avisoMuestraBaja =
+    sugerenciaMuestra !== null &&
+    muestraCajasInput !== "" &&
+    Number(muestraCajasInput) < sugerenciaMuestra.cajasMuestra;
 
   const firmezaLabel =
     especieSeleccionada === "CEREZA"
@@ -263,6 +290,20 @@ export default function InspeccionForm({
               defaultValue={(inspeccion?.fecha ?? new Date()).toISOString().slice(0, 10)}
               className={campoClase(errores.fecha)}
             />
+          </Field>
+
+          <Field label="Etapa de la inspección" error={errores.etapa}>
+            <select
+              name="etapa"
+              defaultValue={inspeccion?.etapa ?? "RECEPCION"}
+              className={campoClase(errores.etapa)}
+            >
+              {etapaInspeccionOptions.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </Field>
 
           <Field label="Resultado" error={errores.resultado}>
@@ -388,9 +429,16 @@ export default function InspeccionForm({
             <input
               type="number"
               name="muestraCajas"
-              defaultValue={inspeccion?.muestraCajas ?? ""}
+              value={muestraCajasInput}
+              onChange={(e) => setMuestraCajasInput(e.target.value)}
               className={`${campoClase(errores.muestraCajas)} font-mono tabular-nums`}
             />
+            {sugerenciaMuestra ? (
+              <p className={`mt-1 text-xs ${avisoMuestraBaja ? "text-state-warning" : "text-fg-muted"}`}>
+                Sugerido para este lote: {sugerenciaMuestra.cajasMuestra} cajas (mín.{" "}
+                {sugerenciaMuestra.frutosMinimos} frutos) — plan de muestreo USDA/ISO 2859.
+              </p>
+            ) : null}
           </Field>
           <Field label="N° unidades muestreadas" error={errores.muestraUnidades}>
             <input
@@ -533,7 +581,7 @@ export default function InspeccionForm({
                         defaultValue={defectoExistente?.tipo ?? ""}
                       >
                         <option value="">Sin especificar</option>
-                        {tipoDefectoOptions.map(([value, label]) => (
+                        {opcionesDefecto.map(([value, label]) => (
                           <option key={value} value={value}>
                             {label}
                           </option>

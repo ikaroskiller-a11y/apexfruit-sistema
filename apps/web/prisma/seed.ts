@@ -14,6 +14,7 @@
 import {
   PrismaClient,
   EspecieFruta,
+  EtapaInspeccion,
   ResultadoInspeccion,
   TipoDefecto,
   RolUsuario,
@@ -205,12 +206,24 @@ async function main() {
   const temporadas = ["2024-2025", "2025-2026"];
   const mercadosDestino = Object.values(MercadoDestino);
 
+  // Catálogo ampliado manzana/pera/kiwi — duplica src/lib/normas.ts#defectosPorEspecie
+  // (no se importa, ver nota de independencia de path aliases arriba) con la
+  // información de docs/research/estandares-defectos-calidad.md §4.
   const defectosPorEspecie: Record<EspecieFruta, TipoDefecto[]> = {
     [EspecieFruta.MANZANA]: [
       TipoDefecto.RUSSET,
       TipoDefecto.MAGULLADURA,
       TipoDefecto.QUEMADURA_SOL,
       TipoDefecto.DEFORME,
+      TipoDefecto.PICADURA_INSECTO_SANA,
+      TipoDefecto.PERFORACION_GUSANO,
+      TipoDefecto.PUDRICION_AZUL,
+      TipoDefecto.PUDRICION_GRIS,
+      TipoDefecto.PUDRICION_AMARGA,
+      TipoDefecto.BITTER_PIT,
+      TipoDefecto.ESCALDADO_SUPERFICIAL,
+      TipoDefecto.CORAZON_ACUOSO,
+      TipoDefecto.DEFECTO_COLOR,
     ],
     [EspecieFruta.UVA_DE_MESA]: [
       TipoDefecto.DESGRANE,
@@ -227,11 +240,39 @@ async function main() {
       TipoDefecto.INMADURO,
       TipoDefecto.MANCHA,
     ],
-    [EspecieFruta.PERA]: [TipoDefecto.RUSSET, TipoDefecto.DEFORME],
-    [EspecieFruta.KIWI]: [TipoDefecto.BLANDURA, TipoDefecto.INMADURO],
+    [EspecieFruta.PERA]: [
+      TipoDefecto.RUSSET,
+      TipoDefecto.DEFORME,
+      TipoDefecto.PICADURA_INSECTO_SANA,
+      TipoDefecto.DANO_ACARO,
+      TipoDefecto.PUDRICION_AZUL,
+      TipoDefecto.PUDRICION_GRIS,
+      TipoDefecto.ESCALDADO_SUPERFICIAL,
+      TipoDefecto.ESCALDADO_SENESCENTE,
+      TipoDefecto.MANCHA_CORCHOSA_ANJOU,
+      TipoDefecto.DEGENERACION_PULPA,
+    ],
+    [EspecieFruta.KIWI]: [
+      TipoDefecto.BLANDURA,
+      TipoDefecto.INMADURO,
+      TipoDefecto.PUDRICION_GRIS,
+      TipoDefecto.PUDRICION_PEDUNCULAR,
+      TipoDefecto.DANO_FRIO,
+      TipoDefecto.FRUTA_APLANADA,
+      TipoDefecto.MARCHITAMIENTO,
+    ],
     [EspecieFruta.CIRUELA]: [TipoDefecto.MAGULLADURA, TipoDefecto.PARTIDURA_CRACKING],
     [EspecieFruta.OTRO]: [TipoDefecto.OTRO],
   };
+
+  // Distribución de etapas: cada inspección sucesiva de un lote avanza por
+  // el flujo real de packing (ver docs/research/estandares-defectos-calidad.md
+  // §1) en vez de quedar todas en RECEPCION por default.
+  const etapasEnOrden = [
+    EtapaInspeccion.RECEPCION,
+    EtapaInspeccion.POST_HIDROENFRIADO,
+    EtapaInspeccion.PRE_DESPACHO,
+  ];
 
   console.log("Creando lotes e inspecciones...");
   let codigoSeq = 1;
@@ -359,6 +400,7 @@ async function main() {
           const inspeccion = await prisma.inspeccion.create({
             data: {
               fecha,
+              etapa: etapasEnOrden[Math.min(j, etapasEnOrden.length - 1)],
               calibre: lote.calibrePredominante,
               color:
                 especie === EspecieFruta.MANZANA

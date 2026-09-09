@@ -13,6 +13,7 @@
 import { z } from "zod";
 import {
   EspecieFruta,
+  EtapaInspeccion,
   MercadoDestino,
   ResultadoInspeccion,
   RolUsuario,
@@ -225,6 +226,10 @@ export const inspeccionSchema = z.object({
   loteId: textoRequerido("El lote"),
   inspectorId: textoRequerido("El inspector"),
   fecha: schemaFecha("La fecha"),
+  etapa: z.preprocess(
+    stringOVacio,
+    z.optional(z.enum(EtapaInspeccion, "Selecciona una etapa válida."))
+  ),
   resultado: z.preprocess(
     stringOVacio,
     z.optional(z.enum(ResultadoInspeccion, "Selecciona un resultado válido."))

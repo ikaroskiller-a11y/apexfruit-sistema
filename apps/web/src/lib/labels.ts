@@ -1,5 +1,6 @@
 import type {
   EspecieFruta,
+  EtapaInspeccion,
   FirmezaUnidad,
   MercadoDestino,
   ResultadoInspeccion,
@@ -72,8 +73,41 @@ export const tipoDefectoLabels: Record<TipoDefecto, string> = {
   INMADURO: "Inmaduro",
   DANO_GRANIZO: "Daño por granizo",
   DESGRANE: "Desgrane",
-  BLANDURA: "Blandura",
+  BLANDURA: "Ablandamiento (pérdida de firmeza)",
   OTRO: "Otro",
+
+  // Catálogo ampliado manzana/pera/kiwi (ver
+  // docs/research/estandares-defectos-calidad.md §4)
+  CORTE_HERIDA: "Corte / herida en la piel",
+  ROCE_RAMA: "Roce de rama u hoja",
+  PICADURA_INSECTO_SANA: "Picadura de insecto cicatrizada",
+  PERFORACION_GUSANO: "Perforación de gusano (worm hole)",
+  DANO_ACARO: "Daño por ácaro de las ampollas",
+  DANO_ESCAMA: "Daño por escama",
+  PUDRICION_AZUL: "Pudrición azul (Penicillium)",
+  PUDRICION_GRIS: "Pudrición gris (Botrytis)",
+  PUDRICION_AMARGA: "Pudrición amarga (bitter rot)",
+  PUDRICION_MUCOR: "Podredumbre Mucor",
+  PUDRICION_PEDUNCULAR: "Podredumbre del pedúnculo (stem-end rot)",
+  BITTER_PIT: "Bitter pit (picado amargo)",
+  ESCALDADO_SUPERFICIAL: "Escaldado superficial",
+  ESCALDADO_SENESCENTE: "Escaldado senescente",
+  CORAZON_ACUOSO: "Corazón acuoso (watercore)",
+  MANCHA_CORCHOSA_ANJOU: "Mancha corchosa de Anjou",
+  DEGENERACION_PULPA: "Quiebre del corazón (core breakdown)",
+  DANO_FRIO: "Daño por frío (chilling injury)",
+  DEFECTO_COLOR: "Defecto de color / colorado insuficiente",
+  FRUTA_APLANADA: "Fruta aplanada",
+  MARCHITAMIENTO: "Marchitamiento / arrugamiento",
+};
+
+// Etapa del proceso de packing en que ocurrió la inspección (ver
+// docs/research/estandares-defectos-calidad.md §1 y §7) — un lote pasa por
+// varias inspecciones en distintos puntos del flujo, no una sola.
+export const etapaInspeccionLabels: Record<EtapaInspeccion, string> = {
+  RECEPCION: "Recepción",
+  POST_HIDROENFRIADO: "Post-hidroenfriado",
+  PRE_DESPACHO: "Pre-despacho",
 };
 
 export const mercadoDestinoLabels: Record<MercadoDestino, string> = {
@@ -119,5 +153,10 @@ export const tipoDefectoOptions = Object.entries(tipoDefectoLabels) as [
 
 export const mercadoDestinoOptions = Object.entries(mercadoDestinoLabels) as [
   MercadoDestino,
+  string,
+][];
+
+export const etapaInspeccionOptions = Object.entries(etapaInspeccionLabels) as [
+  EtapaInspeccion,
   string,
 ][];
