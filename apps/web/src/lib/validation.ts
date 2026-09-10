@@ -269,26 +269,33 @@ const MAX_DEFECTOS = 10;
  * `defectoPorcentaje_0`, `defectoCantidad_0`, ...). Devuelve las filas
  * válidas, o un `FormState` con errores si alguna fila es inválida. Las
  * filas vacías (sin tipo seleccionado) se ignoran silenciosamente.
+ *
+ * `opts.prefix` permite reusar el mismo parseo con otro juego de nombres de
+ * campo (ej. `muestraDefecto` para el form de Muestra, que convive en la
+ * misma página con las filas de defectos de otro formulario) y `opts.max`
+ * baja el tope de filas cuando el formulario es más acotado.
  */
 export function parsearDefectos(
-  formData: FormData
+  formData: FormData,
+  opts: { prefix?: string; max?: number } = {}
 ): { defectos: DefectoInput[] } | { error: FormState } {
+  const { prefix = "defecto", max = MAX_DEFECTOS } = opts;
   const defectos: DefectoInput[] = [];
   const fieldErrors: Record<string, string[]> = {};
 
-  for (let i = 0; i < MAX_DEFECTOS; i++) {
-    const tipo = formData.get(`defectoTipo_${i}`);
+  for (let i = 0; i < max; i++) {
+    const tipo = formData.get(`${prefix}Tipo_${i}`);
     if (typeof tipo !== "string" || tipo.trim() === "") continue;
 
     const resultado = defectoSchema.safeParse({
       tipo,
-      porcentaje: formData.get(`defectoPorcentaje_${i}`),
-      cantidad: formData.get(`defectoCantidad_${i}`),
+      porcentaje: formData.get(`${prefix}Porcentaje_${i}`),
+      cantidad: formData.get(`${prefix}Cantidad_${i}`),
     });
 
     if (!resultado.success) {
       for (const issue of resultado.error.issues) {
-        const campo = `defecto_${i}_${issue.path.join(".")}`;
+        const campo = `${prefix}_${i}_${issue.path.join(".")}`;
         fieldErrors[campo] = [...(fieldErrors[campo] ?? []), issue.message];
       }
       continue;
@@ -313,3 +320,26 @@ export function parsearDefectos(
 
   return { defectos };
 }
+
+// ---------------------------------------------------------------------------
+// Muestra (dentro de una Inspección)
+// ---------------------------------------------------------------------------
+
+export const muestraSchema = z.object({
+  embalaje: textoRequerido("El embalaje", { min: 1, max: 100 }),
+  etiqueta: textoOpcional("La etiqueta", { max: 100 }),
+  calibre: textoOpcional("El calibre", { max: 50 }),
+  nFrutos: schemaNumero("El n° de frutos", { min: 0, entero: true }),
+  pesoKg: schemaNumero("El peso", { min: 0, max: 10000 }),
+  nSalida: textoOpcional("El n° de salida", { max: 50 }),
+  embaladora: textoOpcional("La embaladora", { max: 100 }),
+  sinPLU: schemaNumero("Sin PLU", { min: 0, entero: true }),
+  conPLU: schemaNumero("Con PLU", { min: 0, entero: true }),
+  sobreCalibrePct: schemaNumero("El % sobre calibre", { min: 0, max: 100 }),
+  bajoCalibrePct: schemaNumero("El % bajo calibre", { min: 0, max: 100 }),
+  notaApertura: textoOpcional("La nota de apertura", { max: 500 }),
+  notaEmbalaje: textoOpcional("La nota de embalaje", { max: 500 }),
+  hora: textoOpcional("La hora", { max: 10 }),
+});
+
+export type MuestraInput = z.infer<typeof muestraSchema>;

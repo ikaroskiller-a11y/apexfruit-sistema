@@ -191,11 +191,69 @@ model Inspeccion {
 
   defectos Defecto[]
   fotos    Foto[]
+  muestras Muestra[]
 
   @@index([loteId])
   @@index([inspectorId])
   @@index([fecha])
   @@map("inspecciones")
+}
+
+// ---------------------------------------------------------------------------
+// Muestras individuales dentro de una inspección
+// ---------------------------------------------------------------------------
+
+// Calidad dominante de una muestra puntual, derivada de sus propios
+// defectos (ver clasificarMuestra en src/lib/normas.ts) — mismo patrón que
+// ResultadoInspeccion para el resultado de cereza a nivel de inspección
+// completa, pero aplicado a una muestra individual.
+enum CalidadMuestra {
+  A
+  B
+  C
+}
+
+model Muestra {
+  id     String @id @default(cuid())
+  numero Int // correlativo dentro de la inspección (1, 2, 3, ...), autogenerado — el inspector nunca lo escribe. Folio visible = `${lote.codigo}-M${numero}`.
+
+  embalaje String // tipo de embalaje (texto libre en el MVP) — agrupa las muestras en tabs en la UI
+
+  etiqueta        String?
+  calibre         String?
+  nFrutos         Int?
+  pesoKg          Float?
+  nSalida         String?
+  embaladora      String?
+  sinPLU          Int?
+  conPLU          Int?
+  sobreCalibrePct Float?
+  bajoCalibrePct  Float?
+  notaApertura    String?
+  notaEmbalaje    String?
+  hora            String? // hora de registro en terreno, formato libre "HH:mm" — no se valida como DateTime real para no complicar el flujo rápido
+
+  // Derivados de los defectos propios de esta muestra (clasificarMuestra en
+  // src/lib/normas.ts) — recalculados cada vez que se guardan sus defectos,
+  // nunca ingresados a mano. Umbrales PROVISIONALES, ver comentario en
+  // normas.ts: pendientes de validar con el dueño.
+  calidad        CalidadMuestra @default(A)
+  condicion      Int            @default(1) // 1 (mejor) a 3 (peor)
+  causaCalidad   String?
+  causaCondicion String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  inspeccionId String
+  inspeccion   Inspeccion @relation(fields: [inspeccionId], references: [id], onDelete: Cascade)
+
+  defectos Defecto[]
+  fotos    Foto[]
+
+  @@unique([inspeccionId, numero])
+  @@index([inspeccionId])
+  @@map("muestras")
 }
 
 // ---------------------------------------------------------------------------
@@ -285,7 +343,11 @@ model Defecto {
   inspeccionId String
   inspeccion   Inspeccion @relation(fields: [inspeccionId], references: [id], onDelete: Cascade)
 
+  muestraId String?
+  muestra   Muestra? @relation(fields: [muestraId], references: [id], onDelete: Cascade)
+
   @@index([inspeccionId])
+  @@index([muestraId])
   @@map("defectos")
 }
 
@@ -302,6 +364,10 @@ model Foto {
   inspeccionId String
   inspeccion   Inspeccion @relation(fields: [inspeccionId], references: [id], onDelete: Cascade)
 
+  muestraId String?
+  muestra   Muestra? @relation(fields: [muestraId], references: [id], onDelete: Cascade)
+
   @@index([inspeccionId])
+  @@index([muestraId])
   @@map("fotos")
 }

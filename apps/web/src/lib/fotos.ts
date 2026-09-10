@@ -13,20 +13,25 @@ export function esImagenPermitida(foto: File): boolean {
 }
 
 /**
- * Guarda una foto de inspección y devuelve la URL pública para `Foto.url`.
+ * Guarda una foto y devuelve la URL pública para `Foto.url`. `rutaCarpeta` es
+ * el prefijo del path dentro del blob store (ej. `inspecciones/{id}` para una
+ * foto de inspección completa, `inspecciones/{id}/muestras/{muestraId}` para
+ * una foto de una muestra puntual) — no afecta el destino local, que siempre
+ * usa la misma carpeta `public/uploads/` sin subcarpetas.
+ *
  * Usa Vercel Blob cuando hay `BLOB_READ_WRITE_TOKEN` configurado (Vercel no
  * tiene disco persistente, así que en producción esto es obligatorio); si no
  * hay token, cae a `public/uploads/` en el filesystem local — sirve para
  * correr en un servidor propio con disco persistente, pero no en Vercel.
  */
-export async function guardarFoto(inspeccionId: string, foto: File): Promise<string> {
+export async function guardarFoto(rutaCarpeta: string, foto: File): Promise<string> {
   const ext = path.extname(foto.name) || ".jpg";
   const { randomUUID } = await import("node:crypto");
   const filename = `${randomUUID()}${ext}`;
 
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     const { put } = await import("@vercel/blob");
-    const blob = await put(`inspecciones/${inspeccionId}/${filename}`, foto, {
+    const blob = await put(`${rutaCarpeta}/${filename}`, foto, {
       access: "public",
     });
     return blob.url;

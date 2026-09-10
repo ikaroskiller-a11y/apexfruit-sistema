@@ -1,4 +1,5 @@
 import type {
+  CalidadMuestra,
   EspecieFruta,
   EtapaInspeccion,
   FirmezaUnidad,
@@ -38,6 +39,32 @@ export const resultadoStatusMap: Record<
   CATEGORIA_1: "success",
   CATEGORIA_2: "warning",
   OBJETADO: "danger",
+};
+
+// Calidad/Condición de una Muestra individual (ver clasificarMuestra en
+// src/lib/normas.ts) — mismo criterio de status semántico que resultadoStatusMap.
+export const calidadMuestraLabels: Record<CalidadMuestra, string> = {
+  A: "Calidad A",
+  B: "Calidad B",
+  C: "Calidad C",
+};
+
+export const calidadMuestraStatusMap: Record<CalidadMuestra, "success" | "warning" | "danger"> = {
+  A: "success",
+  B: "warning",
+  C: "danger",
+};
+
+export const condicionMuestraLabels: Record<1 | 2 | 3, string> = {
+  1: "Condición 1",
+  2: "Condición 2",
+  3: "Condición 3",
+};
+
+export const condicionMuestraStatusMap: Record<1 | 2 | 3, "success" | "warning" | "danger"> = {
+  1: "success",
+  2: "warning",
+  3: "danger",
 };
 
 export const rolLabels: Record<RolUsuario, string> = {

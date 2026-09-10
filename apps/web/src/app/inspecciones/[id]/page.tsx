@@ -40,6 +40,7 @@ export default async function InspeccionDetallePage({
         inspector: true,
         defectos: true,
         fotos: true,
+        _count: { select: { muestras: true } },
       },
     }),
     getCurrentUser(),
@@ -84,6 +85,12 @@ export default async function InspeccionDetallePage({
             <Badge status={resultadoStatusMap[inspeccion.resultado]}>
               {resultadoLabels[inspeccion.resultado]}
             </Badge>
+            <Link
+              href={`/inspecciones/${inspeccion.id}/muestras`}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface"
+            >
+              Ver muestras ({inspeccion._count.muestras})
+            </Link>
             <Link
               href={`/inspecciones/${inspeccion.id}/reporte`}
               className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-cream shadow-sm transition-colors hover:bg-brand-800"

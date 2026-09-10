@@ -193,7 +193,7 @@ export const defectosPorEspecie: Record<EspecieFruta, TipoDefecto[]> = {
 
 export type ResultadoCereza = "CATEGORIA_1" | "CATEGORIA_2" | "OBJETADO";
 
-type DefectoEvaluable = { tipo: TipoDefecto; porcentaje: number | null | undefined };
+export type DefectoEvaluable = { tipo: TipoDefecto; porcentaje: number | null | undefined };
 
 /**
  * Criterio de objeción real (manual operativo Apex Fruit, materia prima):
@@ -237,6 +237,52 @@ export function criterioObjecionCereza(defectos: DefectoEvaluable[]): string | n
     return `Objetado por: suma de defectos de condición ${sumaCondicion.toFixed(1)}% supera el máximo de 12%.`;
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Clasificación de una Muestra individual (calidad A/B/C, condición 1-3)
+// ---------------------------------------------------------------------------
+
+export type ClasificacionMuestra = {
+  calidad: "A" | "B" | "C";
+  condicion: 1 | 2 | 3;
+  causaCalidad: string | null;
+  causaCondicion: string | null;
+};
+
+/**
+ * ⚠️ UMBRALES PROVISIONALES — sin validar todavía con el dueño.
+ *
+ * A diferencia de `evaluarResultadoCereza` (cuyos cortes 6%/12% sí vienen
+ * del manual operativo real de Apex Fruit), no existe ninguna fuente real
+ * que defina cortes de A/B/C ni de condición 1/2/3 para una muestra
+ * individual — esto es una propuesta de modelado propia, que reusa los
+ * mismos cortes 6%/12% de condición por consistencia con la regla que ya
+ * se usa a nivel de inspección completa. Antes de usar esto para decisiones
+ * reales de negocio (rechazar/aceptar una muestra), hay que revisarlo con
+ * el dueño y ajustar los números si no calzan con su criterio real.
+ */
+export function clasificarMuestra(defectos: DefectoEvaluable[]): ClasificacionMuestra {
+  const sumaCalidad = defectos
+    .filter((d) => categoriaDefecto[d.tipo] === "CALIDAD")
+    .reduce((acc, d) => acc + (d.porcentaje ?? 0), 0);
+  const sumaCondicion = defectos
+    .filter((d) => categoriaDefecto[d.tipo] === "CONDICION")
+    .reduce((acc, d) => acc + (d.porcentaje ?? 0), 0);
+
+  const calidad: "A" | "B" | "C" = sumaCalidad <= 5 ? "A" : sumaCalidad <= 15 ? "B" : "C";
+  const condicion: 1 | 2 | 3 = sumaCondicion <= 6 ? 1 : sumaCondicion <= 12 ? 2 : 3;
+
+  const causaCalidad =
+    calidad === "A"
+      ? null
+      : `Calidad ${calidad} por: defectos de calidad suman ${sumaCalidad.toFixed(1)}% de la muestra.`;
+  const causaCondicion =
+    condicion === 1
+      ? null
+      : `Condición ${condicion} por: defectos de condición suman ${sumaCondicion.toFixed(1)}% de la muestra.`;
+
+  return { calidad, condicion, causaCalidad, causaCondicion };
 }
 
 // ---------------------------------------------------------------------------

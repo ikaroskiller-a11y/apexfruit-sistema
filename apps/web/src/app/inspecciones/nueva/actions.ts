@@ -48,7 +48,7 @@ async function guardarFotos(inspeccionId: string, formData: FormData): Promise<v
   if (fotos.length === 0) return;
 
   for (const foto of fotos) {
-    const url = await guardarFoto(inspeccionId, foto);
+    const url = await guardarFoto(`inspecciones/${inspeccionId}`, foto);
     await prisma.foto.create({
       data: { inspeccionId, url, descripcion: foto.name },
     });
