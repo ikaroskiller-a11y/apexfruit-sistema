@@ -12,7 +12,7 @@ function datosDesdeFormulario(formData: FormData) {
     clienteId: formData.get("clienteId"),
     especie: formData.get("especie"),
     variedad: formData.get("variedad"),
-    productor: formData.get("productor"),
+    productorId: formData.get("productorId"),
     ubicacionPacking: formData.get("ubicacionPacking"),
     temporada: formData.get("temporada"),
     fechaCosecha: formData.get("fechaCosecha"),
@@ -49,11 +49,20 @@ export async function crearLote(_prevState: FormState, formData: FormData): Prom
     };
   }
 
-  const cliente = await prisma.cliente.findUnique({ where: { id: parsed.data.clienteId } });
+  const [cliente, productor] = await Promise.all([
+    prisma.cliente.findUnique({ where: { id: parsed.data.clienteId } }),
+    prisma.productor.findUnique({ where: { id: parsed.data.productorId } }),
+  ]);
   if (!cliente) {
     return {
       error: "El cliente seleccionado no existe.",
       fieldErrors: { clienteId: ["Selecciona un cliente válido."] },
+    };
+  }
+  if (!productor) {
+    return {
+      error: "El productor seleccionado no existe.",
+      fieldErrors: { productorId: ["Selecciona un productor válido."] },
     };
   }
 
@@ -65,7 +74,7 @@ export async function crearLote(_prevState: FormState, formData: FormData): Prom
         clienteId: parsed.data.clienteId,
         especie: parsed.data.especie,
         variedad: parsed.data.variedad,
-        productor: parsed.data.productor,
+        productorId: parsed.data.productorId,
         ubicacionPacking: parsed.data.ubicacionPacking,
         temporada: parsed.data.temporada,
         fechaCosecha: parsed.data.fechaCosecha ? new Date(parsed.data.fechaCosecha) : undefined,
@@ -106,11 +115,20 @@ export async function actualizarLote(_prevState: FormState, formData: FormData):
     };
   }
 
-  const cliente = await prisma.cliente.findUnique({ where: { id: parsed.data.clienteId } });
+  const [cliente, productor] = await Promise.all([
+    prisma.cliente.findUnique({ where: { id: parsed.data.clienteId } }),
+    prisma.productor.findUnique({ where: { id: parsed.data.productorId } }),
+  ]);
   if (!cliente) {
     return {
       error: "El cliente seleccionado no existe.",
       fieldErrors: { clienteId: ["Selecciona un cliente válido."] },
+    };
+  }
+  if (!productor) {
+    return {
+      error: "El productor seleccionado no existe.",
+      fieldErrors: { productorId: ["Selecciona un productor válido."] },
     };
   }
 
@@ -122,7 +140,7 @@ export async function actualizarLote(_prevState: FormState, formData: FormData):
         clienteId: parsed.data.clienteId,
         especie: parsed.data.especie,
         variedad: parsed.data.variedad,
-        productor: parsed.data.productor,
+        productorId: parsed.data.productorId,
         ubicacionPacking: parsed.data.ubicacionPacking,
         temporada: parsed.data.temporada,
         fechaCosecha: parsed.data.fechaCosecha ? new Date(parsed.data.fechaCosecha) : null,

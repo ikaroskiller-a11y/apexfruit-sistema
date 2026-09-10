@@ -187,7 +187,8 @@ async function main() {
     EspecieFruta.CEREZA,
   ];
 
-  const productores = [
+  console.log("Creando productores...");
+  const nombresProductores = [
     "Agrícola Los Boldos",
     "Fundo Santa Elena",
     "Agrícola El Peumo",
@@ -195,6 +196,9 @@ async function main() {
     "Agrícola Tres Robles",
     "Fundo La Esperanza",
   ];
+  const productores = await Promise.all(
+    nombresProductores.map((nombre) => prisma.productor.create({ data: { nombre } }))
+  );
 
   const packings = [
     "Packing Curicó Centro",
@@ -307,7 +311,7 @@ async function main() {
             codigo,
             especie,
             variedad,
-            productor: rand(productores),
+            productorId: rand(productores).id,
             ubicacionPacking: rand(packings),
             temporada,
             fechaCosecha,

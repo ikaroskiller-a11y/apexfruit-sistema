@@ -17,9 +17,10 @@ export default async function EditarLotePage({
   if (!usuario) redirect(`/login?next=/lotes/${id}/editar`);
   if (!esAdmin(usuario)) redirect(`/lotes/${id}`);
 
-  const [lote, clientes] = await Promise.all([
+  const [lote, clientes, productores] = await Promise.all([
     prisma.lote.findUnique({ where: { id } }),
     prisma.cliente.findMany({ orderBy: { nombre: "asc" } }),
+    prisma.productor.findMany({ orderBy: { nombre: "asc" } }),
   ]);
   if (!lote) notFound();
 
@@ -28,7 +29,7 @@ export default async function EditarLotePage({
       <TopBar title={`Editar lote · ${lote.codigo}`} />
       <main className="flex-1 px-4 py-6 md:px-8">
         <Card className="mx-auto max-w-3xl">
-          <LoteForm clientes={clientes} lote={lote} />
+          <LoteForm clientes={clientes} productores={productores} lote={lote} />
         </Card>
       </main>
     </>

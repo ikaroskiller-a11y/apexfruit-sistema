@@ -133,6 +133,7 @@ export const tipoDefectoLabels: Record<TipoDefecto, string> = {
 // varias inspecciones en distintos puntos del flujo, no una sola.
 export const etapaInspeccionLabels: Record<EtapaInspeccion, string> = {
   RECEPCION: "Recepción",
+  PRESIZER: "Presizer",
   POST_HIDROENFRIADO: "Post-hidroenfriado",
   PRE_DESPACHO: "Pre-despacho",
 };

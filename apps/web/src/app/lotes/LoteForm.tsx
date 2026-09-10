@@ -9,6 +9,7 @@ import { especieOptions, mercadoDestinoOptions } from "@/lib/labels";
 import type { EspecieFruta, MercadoDestino } from "@prisma/client";
 
 type ClienteOpcion = { id: string; nombre: string };
+type ProductorOpcion = { id: string; nombre: string };
 
 type LoteExistente = {
   id: string;
@@ -16,7 +17,7 @@ type LoteExistente = {
   clienteId: string;
   especie: EspecieFruta;
   variedad: string;
-  productor: string;
+  productorId: string;
   ubicacionPacking: string;
   temporada: string;
   fechaCosecha: Date | null;
@@ -29,9 +30,11 @@ type LoteExistente = {
 
 export default function LoteForm({
   clientes,
+  productores,
   lote,
 }: {
   clientes: ClienteOpcion[];
+  productores: ProductorOpcion[];
   lote?: LoteExistente;
 }) {
   const accion = lote ? actualizarLote : crearLote;
@@ -99,14 +102,20 @@ export default function LoteForm({
           />
         </Field>
 
-        <Field label="Productor" required error={errores.productor}>
-          <input
-            type="text"
-            name="productor"
+        <Field label="Productor" required error={errores.productorId}>
+          <select
+            name="productorId"
             required
-            defaultValue={lote?.productor}
-            className={campoClase(errores.productor)}
-          />
+            defaultValue={lote?.productorId ?? ""}
+            className={campoClase(errores.productorId)}
+          >
+            <option value="">Selecciona un productor…</option>
+            {productores.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <Field label="Packing / centro de acopio" required error={errores.ubicacionPacking}>

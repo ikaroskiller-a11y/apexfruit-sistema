@@ -13,7 +13,10 @@ export default async function NuevoLotePage() {
   if (!usuario) redirect("/login?next=/lotes/nuevo");
   if (!esAdmin(usuario)) redirect("/lotes");
 
-  const clientes = await prisma.cliente.findMany({ orderBy: { nombre: "asc" } });
+  const [clientes, productores] = await Promise.all([
+    prisma.cliente.findMany({ orderBy: { nombre: "asc" } }),
+    prisma.productor.findMany({ orderBy: { nombre: "asc" } }),
+  ]);
 
   return (
     <>
@@ -28,8 +31,16 @@ export default async function NuevoLotePage() {
               </Link>
               .
             </p>
+          ) : productores.length === 0 ? (
+            <p className="text-sm text-fg-muted">
+              Todavía no hay productores registrados. Crea un productor primero desde{" "}
+              <Link href="/productores/nuevo" className="text-brand-700 hover:underline dark:text-brand-500">
+                Productores
+              </Link>
+              .
+            </p>
           ) : (
-            <LoteForm clientes={clientes} />
+            <LoteForm clientes={clientes} productores={productores} />
           )}
         </Card>
       </main>

@@ -65,6 +65,30 @@ model Cliente {
 }
 
 // ---------------------------------------------------------------------------
+// Productores (huertos) — dueños de la fruta antes del packing. Distinto de
+// Cliente (exportadora) y de Lote.ubicacionPacking (centro de acopio donde
+// se inspecciona): un mismo productor puede despachar a varios packings, y
+// un packing recibe de varios productores, así que no se fusionan.
+// ---------------------------------------------------------------------------
+
+model Productor {
+  id            String   @id @default(cuid())
+  nombre        String
+  rut           String?  @unique
+  contacto      String?
+  email         String?
+  telefono      String?
+  direccion     String?
+  notas         String?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  lotes Lote[]
+
+  @@map("productores")
+}
+
+// ---------------------------------------------------------------------------
 // Lotes / partidas de fruta
 // ---------------------------------------------------------------------------
 
@@ -97,7 +121,6 @@ model Lote {
   codigo            String       @unique // folio/código interno de partida
   especie           EspecieFruta
   variedad          String // ej: Gala, Fuji, Lapins, Santina, Duke, Thompson Seedless
-  productor         String // nombre del huerto/productor
   ubicacionPacking  String // packing / centro de acopio donde se inspecciona
   temporada         String // ej: "2025-2026"
   fechaCosecha      DateTime?
@@ -113,9 +136,13 @@ model Lote {
   clienteId String
   cliente   Cliente @relation(fields: [clienteId], references: [id])
 
+  productorId  String
+  productorRef Productor @relation(fields: [productorId], references: [id])
+
   inspecciones Inspeccion[]
 
   @@index([clienteId])
+  @@index([productorId])
   @@index([especie])
   @@map("lotes")
 }
@@ -146,6 +173,7 @@ enum FirmezaUnidad {
 // varias inspecciones en distintos puntos del flujo, no una sola.
 enum EtapaInspeccion {
   RECEPCION
+  PRESIZER
   POST_HIDROENFRIADO
   PRE_DESPACHO
 }
@@ -176,8 +204,22 @@ model Inspeccion {
   hidrocoolerTempPulpaPostC        Float?
   hidrocoolerEsperaMasDeUnaHora    Boolean? // true si esperó > 1h antes del hidrocooler
 
+  // Control de presizer (solo etapa PRESIZER) — calibrado óptico
+  // automatizado. Distribución de calibre/color queda como texto libre a
+  // propósito (evita un sub-CRUD de "distribución por calibre" bajo presión
+  // de tiempo). Brix/firmeza de sensores NIR NO se duplican acá: reusan
+  // brixGrados/firmeza de arriba.
+  presizerNumeroBin             String? // n° de bin de entrada, trazabilidad
+  presizerDistribucionCalibres  String? // resumen libre, ej. "24:10%, 28:25%, 32:40%..."
+  presizerDistribucionColor     String? // resumen libre por categoría de color
+  presizerFalsoRechazoPct       Float? // % fruta buena que fue a descarte por error
+  presizerFalsoAceptadoPct      Float? // % fruta con defecto grave que la máquina no detectó
+  presizerImpactosNuevosPct     Float? // % con daño mecánico nuevo de la línea
+  presizerPerdidaPedicelo       String? // texto libre (ej. "%" o nota) — pérdida de pedicelo en el proceso hidromecánico
+
   porcentajeRechazo Float? // % de rechazo total de la muestra
   resultado         ResultadoInspeccion @default(CATEGORIA_1)
+  informeEnviado    Boolean             @default(false) // true cuando el informe/reporte ya se envió al cliente
   observaciones     String?
 
   creadoEn      DateTime @default(now())

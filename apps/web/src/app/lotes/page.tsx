@@ -23,6 +23,7 @@ export default async function LotesPage({
     prisma.lote.findMany({
       include: {
         cliente: true,
+        productorRef: true,
         inspecciones: { select: { porcentajeRechazo: true } },
       },
       orderBy: { fechaIngreso: "desc" },
@@ -90,7 +91,7 @@ export default async function LotesPage({
                       {lote.cliente.nombre}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5">
-                      {lote.productor}
+                      {lote.productorRef.nombre}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5">
                       {lote.temporada}

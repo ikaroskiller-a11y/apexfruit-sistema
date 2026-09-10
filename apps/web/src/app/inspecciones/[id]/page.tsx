@@ -36,7 +36,7 @@ export default async function InspeccionDetallePage({
     prisma.inspeccion.findUnique({
       where: { id },
       include: {
-        lote: { include: { cliente: true } },
+        lote: { include: { cliente: true, productorRef: true } },
         inspector: true,
         defectos: true,
         fotos: true,
@@ -129,7 +129,7 @@ export default async function InspeccionDetallePage({
                   />
                 }
               />
-              <Row label="Productor" value={inspeccion.lote.productor} />
+              <Row label="Productor" value={inspeccion.lote.productorRef.nombre} />
               <Row label="Packing" value={inspeccion.lote.ubicacionPacking} />
               <Row
                 label="Cliente"

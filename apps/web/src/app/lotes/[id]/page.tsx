@@ -29,6 +29,7 @@ export default async function LoteDetallePage({
       where: { id },
       include: {
         cliente: true,
+        productorRef: true,
         inspecciones: {
           include: { inspector: true },
           orderBy: { fecha: "desc" },
@@ -85,7 +86,17 @@ export default async function LoteDetallePage({
                 label="Especie / Variedad"
                 value={<EspecieTag especie={lote.especie} variedad={lote.variedad} />}
               />
-              <Row label="Productor" value={lote.productor} />
+              <Row
+                label="Productor"
+                value={
+                  <Link
+                    href={`/productores/${lote.productorId}`}
+                    className="text-brand-700 hover:underline dark:text-brand-500"
+                  >
+                    {lote.productorRef.nombre}
+                  </Link>
+                }
+              />
               <Row label="Packing" value={lote.ubicacionPacking} />
               <Row label="Temporada" value={lote.temporada} />
               <Row

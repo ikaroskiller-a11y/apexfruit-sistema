@@ -155,6 +155,25 @@ export const clienteSchema = z.object({
 export type ClienteInput = z.infer<typeof clienteSchema>;
 
 // ---------------------------------------------------------------------------
+// Productor
+// ---------------------------------------------------------------------------
+
+export const productorSchema = z.object({
+  nombre: textoRequerido("El nombre", { min: 2, max: 200 }),
+  rut: textoOpcional("El RUT", { max: 20 }),
+  contacto: textoOpcional("El contacto", { max: 200 }),
+  email: z.preprocess(
+    stringOVacio,
+    z.optional(z.email("El correo electrónico no es válido.").max(200))
+  ),
+  telefono: textoOpcional("El teléfono", { max: 50 }),
+  direccion: textoOpcional("La dirección", { max: 300 }),
+  notas: textoOpcional("Las notas", { max: 2000 }),
+});
+
+export type ProductorInput = z.infer<typeof productorSchema>;
+
+// ---------------------------------------------------------------------------
 // Usuario
 // ---------------------------------------------------------------------------
 
@@ -202,7 +221,7 @@ export const loteSchema = z.object({
     z.enum(EspecieFruta, "Selecciona una especie válida.")
   ),
   variedad: textoRequerido("La variedad", { min: 1, max: 100 }),
-  productor: textoRequerido("El productor", { min: 1, max: 200 }),
+  productorId: textoRequerido("El productor"),
   ubicacionPacking: textoRequerido("El packing", { min: 1, max: 200 }),
   temporada: textoRequerido("La temporada", { min: 4, max: 20 }),
   fechaCosecha: schemaFecha("La fecha de cosecha"),

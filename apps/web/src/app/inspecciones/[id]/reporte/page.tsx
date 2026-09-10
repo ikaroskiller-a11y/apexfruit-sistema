@@ -53,7 +53,7 @@ export default async function ReporteInspeccionPage({
   const inspeccion = await prisma.inspeccion.findUnique({
     where: { id },
     include: {
-      lote: { include: { cliente: true } },
+      lote: { include: { cliente: true, productorRef: true } },
       inspector: true,
       defectos: true,
       fotos: true,
@@ -74,8 +74,15 @@ export default async function ReporteInspeccionPage({
   const avisoKiwi = esKiwi
     ? avisoFirmezaKiwi(inspeccion.lote.mercadoDestino, inspeccion.firmeza)
     : null;
+  // esCereza && ...: criterioObjecionCereza es una regla específica del
+  // catálogo de defectos de cereza (ver src/lib/normas.ts) — mostrarla para
+  // otra especie con resultado OBJETADO calculaba un "criterio" sin sentido
+  // a partir de defectos que no le aplican. Mismo guard que ya usa la página
+  // de detalle (inspecciones/[id]/page.tsx).
   const criterioObjecion =
-    inspeccion.resultado === "OBJETADO" ? criterioObjecionCereza(inspeccion.defectos) : null;
+    esCereza && inspeccion.resultado === "OBJETADO"
+      ? criterioObjecionCereza(inspeccion.defectos)
+      : null;
 
   // Umbral de pudrición húmeda que gatilla objeción por sí solo (>1%), para
   // resaltar en rojo la fila específica que causó la objeción.
@@ -161,7 +168,7 @@ export default async function ReporteInspeccionPage({
           <SectionTitle>Datos del lote</SectionTitle>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
             <Field label="Especie / Variedad" value={`${especieLabels[inspeccion.lote.especie]} · ${inspeccion.lote.variedad}`} />
-            <Field label="Productor" value={inspeccion.lote.productor} />
+            <Field label="Productor" value={inspeccion.lote.productorRef.nombre} />
             <Field label="Packing" value={inspeccion.lote.ubicacionPacking} />
             <Field label="Cliente / Exportadora" value={inspeccion.lote.cliente.nombre} />
             <Field label="Temporada" value={inspeccion.lote.temporada} />
