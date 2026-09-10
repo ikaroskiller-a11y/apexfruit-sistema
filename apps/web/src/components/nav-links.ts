@@ -2,22 +2,21 @@ import type { LucideIcon } from "lucide-react";
 import {
   Apple,
   BarChart3,
-  BookOpen,
   Boxes,
   Building2,
   Cherry,
   CircleDot,
   ClipboardList,
   Database,
-  Home,
   Leaf,
   Plus,
   Send,
-  SlidersHorizontal,
-  Sprout,
   Tractor,
   Users,
 } from "lucide-react";
+
+// Íconos de especie: Apple/Cherry son literales en lucide; Pera/Kiwi no
+// tienen ícono dedicado en la librería, se usan genéricos (Leaf/CircleDot).
 
 export type NavLink = {
   // Ítems contenedores (con children) pueden no tener página propia.
@@ -47,7 +46,32 @@ export const navLinks: NavLink[] = [
     children: [
       { href: "/inspecciones", label: "Todas", icon: ClipboardList },
       { href: "/inspecciones/nueva", label: "Nueva inspección", icon: Plus, primaria: true },
+      {
+        href: "/inspecciones?informeEnviado=pendiente",
+        label: "Informes pendientes",
+        icon: Send,
+      },
     ],
+  },
+  {
+    label: "Manzanas",
+    icon: Apple,
+    children: [{ href: "/inspecciones?especie=MANZANA", label: "Procesos", icon: ClipboardList }],
+  },
+  {
+    label: "Peras",
+    icon: Leaf,
+    children: [{ href: "/inspecciones?especie=PERA", label: "Procesos", icon: ClipboardList }],
+  },
+  {
+    label: "Kiwis",
+    icon: CircleDot,
+    children: [{ href: "/inspecciones?especie=KIWI", label: "Procesos", icon: ClipboardList }],
+  },
+  {
+    label: "Cerezas",
+    icon: Cherry,
+    children: [{ href: "/inspecciones?especie=CEREZA", label: "Procesos", icon: ClipboardList }],
   },
   { href: "/lotes", label: "Lotes", icon: Boxes },
   { href: "/productores", label: "Productores", icon: Tractor },

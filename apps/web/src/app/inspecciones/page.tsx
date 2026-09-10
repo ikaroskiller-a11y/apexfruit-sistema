@@ -11,9 +11,11 @@ import {
   resultadoLabels,
   etapaInspeccionLabels,
   etapaInspeccionOptions,
+  especieOptions,
 } from "@/lib/labels";
 import { formatFecha, formatPorcentaje } from "@/lib/format";
-import type { EtapaInspeccion, Prisma } from "@prisma/client";
+import { marcarInformeEnviado } from "./actions";
+import type { EspecieFruta, EtapaInspeccion, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,8 @@ type SearchParams = {
   clienteId?: string;
   loteCodigo?: string;
   etapa?: string;
+  especie?: string;
+  informeEnviado?: string;
   desde?: string;
   hasta?: string;
   page?: string;
@@ -49,6 +53,17 @@ export default async function InspeccionesPage({
   }
   if (params.etapa) {
     where.etapa = params.etapa as EtapaInspeccion;
+  }
+  if (params.especie) {
+    where.lote = {
+      ...(where.lote as Prisma.LoteWhereInput),
+      especie: params.especie as EspecieFruta,
+    };
+  }
+  if (params.informeEnviado === "pendiente") {
+    where.informeEnviado = false;
+  } else if (params.informeEnviado === "enviado") {
+    where.informeEnviado = true;
   }
   if (params.desde || params.hasta) {
     where.fecha = {
@@ -79,6 +94,8 @@ export default async function InspeccionesPage({
     if (params.clienteId) sp.set("clienteId", params.clienteId);
     if (params.loteCodigo) sp.set("loteCodigo", params.loteCodigo);
     if (params.etapa) sp.set("etapa", params.etapa);
+    if (params.especie) sp.set("especie", params.especie);
+    if (params.informeEnviado) sp.set("informeEnviado", params.informeEnviado);
     if (params.desde) sp.set("desde", params.desde);
     if (params.hasta) sp.set("hasta", params.hasta);
     sp.set("page", String(p));
@@ -124,6 +141,29 @@ export default async function InspeccionesPage({
                     {label}
                   </option>
                 ))}
+              </select>
+            </Field>
+
+            <Field label="Especie">
+              <select name="especie" defaultValue={params.especie ?? ""} className={inputClass}>
+                <option value="">Todas</option>
+                {especieOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Informe">
+              <select
+                name="informeEnviado"
+                defaultValue={params.informeEnviado ?? ""}
+                className={inputClass}
+              >
+                <option value="">Todos</option>
+                <option value="pendiente">Pendientes</option>
+                <option value="enviado">Enviados</option>
               </select>
             </Field>
 
@@ -177,6 +217,7 @@ export default async function InspeccionesPage({
                   <th className="px-4 py-2.5 text-right">°Brix</th>
                   <th className="px-4 py-2.5 text-right">% Rechazo</th>
                   <th className="px-4 py-2.5">Resultado</th>
+                  <th className="px-4 py-2.5">Informe</th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
@@ -221,6 +262,21 @@ export default async function InspeccionesPage({
                           {resultadoLabels[insp.resultado]}
                         </Badge>
                       </td>
+                      <td className="whitespace-nowrap px-4 py-2.5">
+                        {insp.informeEnviado ? (
+                          <Badge status="success">Enviado</Badge>
+                        ) : (
+                          <form action={marcarInformeEnviado.bind(null, insp.id)}>
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-1 rounded-full bg-state-warning-bg px-2.5 py-1 text-xs font-semibold text-state-warning hover:opacity-80"
+                              title="Marcar informe como enviado"
+                            >
+                              Pendiente
+                            </button>
+                          </form>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-2.5 text-right">
                         <Link
                           href={`/inspecciones/${insp.id}`}
@@ -234,7 +290,7 @@ export default async function InspeccionesPage({
                 })}
                 {inspecciones.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-10 text-center text-fg-muted">
+                    <td colSpan={11} className="px-4 py-10 text-center text-fg-muted">
                       No hay inspecciones que calcen con el filtro.
                     </td>
                   </tr>
@@ -282,6 +338,12 @@ export default async function InspeccionesPage({
                     <dt className="text-fg-muted">% Rechazo</dt>
                     <dd className="text-right font-mono tabular-nums text-fg">
                       {formatPorcentaje(insp.porcentajeRechazo)}
+                    </dd>
+                    <dt className="text-fg-muted">Informe</dt>
+                    <dd className="text-right text-fg">
+                      <Badge status={insp.informeEnviado ? "success" : "warning"}>
+                        {insp.informeEnviado ? "Enviado" : "Pendiente"}
+                      </Badge>
                     </dd>
                   </dl>
                 </Card>

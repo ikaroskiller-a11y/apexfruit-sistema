@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { filtrarLinksVisibles, navLinks } from "../nav-links";
 import { NavTree } from "./NavTree";
 
-export function MobileDrawer({ esAdmin = false }: { esAdmin?: boolean }) {
-  const pathname = usePathname();
+/**
+ * `key={pathname}` en el wrapper de abajo fuerza a remontar este componente
+ * en cada navegación, lo que resetea `abierto` a `false` solo — autocierre
+ * de red de seguridad sin useEffect/ref (evitados a propósito: las reglas
+ * de hooks de este repo rechazan tanto un setState síncrono dentro de un
+ * efecto como leer/escribir un ref durante el render).
+ */
+function MobileDrawerInner({ esAdmin }: { esAdmin: boolean }) {
   const [abierto, setAbierto] = useState(false);
-
-  // Autocierre de red de seguridad: si por algún motivo se navegó sin pasar
-  // por el onClick de un link (ej. back/forward del navegador), el drawer no
-  // debe quedar abierto tapando la pantalla.
-  useEffect(() => {
-    setAbierto(false);
-  }, [pathname]);
-
   const links = filtrarLinksVisibles(navLinks, esAdmin);
 
   return (
@@ -58,4 +56,9 @@ export function MobileDrawer({ esAdmin = false }: { esAdmin?: boolean }) {
       ) : null}
     </>
   );
+}
+
+export function MobileDrawer({ esAdmin = false }: { esAdmin?: boolean }) {
+  const pathname = usePathname();
+  return <MobileDrawerInner key={pathname} esAdmin={esAdmin} />;
 }
