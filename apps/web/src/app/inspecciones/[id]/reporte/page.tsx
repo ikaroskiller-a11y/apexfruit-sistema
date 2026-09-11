@@ -292,6 +292,56 @@ export default async function ReporteInspeccionPage({
           </section>
         ) : null}
 
+        {/* Control Presizer */}
+        {inspeccion.etapa === "PRESIZER" ? (
+          <section className="mt-6">
+            <SectionTitle>Control Presizer</SectionTitle>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+              <Field label="N° de bin" value={inspeccion.presizerNumeroBin ?? "—"} mono />
+              <Field
+                label="% Falso rechazo"
+                value={
+                  inspeccion.presizerFalsoRechazoPct !== null
+                    ? `${inspeccion.presizerFalsoRechazoPct}%`
+                    : "—"
+                }
+                mono
+              />
+              <Field
+                label="% Falso aceptado (escape)"
+                value={
+                  inspeccion.presizerFalsoAceptadoPct !== null
+                    ? `${inspeccion.presizerFalsoAceptadoPct}%`
+                    : "—"
+                }
+                mono
+              />
+              <Field
+                label="% Impactos nuevos"
+                value={
+                  inspeccion.presizerImpactosNuevosPct !== null
+                    ? `${inspeccion.presizerImpactosNuevosPct}%`
+                    : "—"
+                }
+                mono
+              />
+              <Field label="Pérdida de pedicelo" value={inspeccion.presizerPerdidaPedicelo ?? "—"} />
+            </dl>
+            {inspeccion.presizerDistribucionCalibres ? (
+              <p className="mt-2 text-sm text-ink/80">
+                <span className="font-semibold">Distribución de calibres:</span>{" "}
+                {inspeccion.presizerDistribucionCalibres}
+              </p>
+            ) : null}
+            {inspeccion.presizerDistribucionColor ? (
+              <p className="mt-1 text-sm text-ink/80">
+                <span className="font-semibold">Distribución de color:</span>{" "}
+                {inspeccion.presizerDistribucionColor}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
         {/* Defectos */}
         <section className="mt-6">
           <SectionTitle>Defectos registrados</SectionTitle>

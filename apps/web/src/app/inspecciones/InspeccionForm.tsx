@@ -11,6 +11,7 @@ import {
   Gauge,
   MessageSquareText,
   Plus,
+  ScanLine,
   X,
 } from "lucide-react";
 import {
@@ -76,6 +77,13 @@ export type InspeccionExistente = {
   hidrocoolerTiempoExposicionMin: number | null;
   hidrocoolerTempPulpaPostC: number | null;
   hidrocoolerEsperaMasDeUnaHora: boolean | null;
+  presizerNumeroBin: string | null;
+  presizerDistribucionCalibres: string | null;
+  presizerDistribucionColor: string | null;
+  presizerFalsoRechazoPct: number | null;
+  presizerFalsoAceptadoPct: number | null;
+  presizerImpactosNuevosPct: number | null;
+  presizerPerdidaPedicelo: string | null;
   porcentajeRechazo: number | null;
   observaciones: string | null;
   defectos: DefectoExistente[];
@@ -182,6 +190,9 @@ export default function InspeccionForm({
   );
   const especieSeleccionada = loteSeleccionado?.especie;
   const esCereza = especieSeleccionada === "CEREZA";
+
+  const [etapa, setEtapa] = useState(inspeccion?.etapa ?? "RECEPCION");
+  const esPresizer = etapa === "PRESIZER";
 
   // Opciones de "Tipo de defecto" filtradas por la especie del lote elegido
   // (defectosPorEspecie, src/lib/normas.ts) — sin lote seleccionado se
@@ -295,7 +306,8 @@ export default function InspeccionForm({
           <Field label="Etapa de la inspección" error={errores.etapa}>
             <select
               name="etapa"
-              defaultValue={inspeccion?.etapa ?? "RECEPCION"}
+              value={etapa}
+              onChange={(e) => setEtapa(e.target.value)}
               className={campoClase(errores.etapa)}
             >
               {etapaInspeccionOptions.map(([value, label]) => (
@@ -522,6 +534,85 @@ export default function InspeccionForm({
                 <option value="true">Sí</option>
                 <option value="false">No</option>
               </select>
+            </Field>
+          </div>
+        </Card>
+      ) : null}
+
+      {esPresizer ? (
+        <Card>
+          <SectionTitle icon={ScanLine}>Control Presizer</SectionTitle>
+          <p className="mb-4 -mt-2 text-xs text-fg-muted">
+            °Brix y firmeza de sensores NIR se registran en la sección "Datos generales" de
+            arriba — no se duplican acá.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="N° de bin de entrada" error={errores.presizerNumeroBin}>
+              <input
+                type="text"
+                name="presizerNumeroBin"
+                defaultValue={inspeccion?.presizerNumeroBin ?? ""}
+                className={`${campoClase(errores.presizerNumeroBin)} font-mono`}
+              />
+            </Field>
+            <Field label="% Falso rechazo" error={errores.presizerFalsoRechazoPct}>
+              <input
+                type="number"
+                step="0.1"
+                name="presizerFalsoRechazoPct"
+                defaultValue={inspeccion?.presizerFalsoRechazoPct ?? ""}
+                className={`${campoClase(errores.presizerFalsoRechazoPct)} font-mono tabular-nums`}
+              />
+            </Field>
+            <Field label="% Falso aceptado (escape)" error={errores.presizerFalsoAceptadoPct}>
+              <input
+                type="number"
+                step="0.1"
+                name="presizerFalsoAceptadoPct"
+                defaultValue={inspeccion?.presizerFalsoAceptadoPct ?? ""}
+                className={`${campoClase(errores.presizerFalsoAceptadoPct)} font-mono tabular-nums`}
+              />
+            </Field>
+            <Field label="% Impactos/machucones nuevos" error={errores.presizerImpactosNuevosPct}>
+              <input
+                type="number"
+                step="0.1"
+                name="presizerImpactosNuevosPct"
+                defaultValue={inspeccion?.presizerImpactosNuevosPct ?? ""}
+                className={`${campoClase(errores.presizerImpactosNuevosPct)} font-mono tabular-nums`}
+              />
+            </Field>
+            <Field label="Pérdida de pedicelo" error={errores.presizerPerdidaPedicelo}>
+              <input
+                type="text"
+                name="presizerPerdidaPedicelo"
+                placeholder="ej. 3%"
+                defaultValue={inspeccion?.presizerPerdidaPedicelo ?? ""}
+                className={campoClase(errores.presizerPerdidaPedicelo)}
+              />
+            </Field>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field
+              label="Distribución de calibres (real vs. teórica)"
+              error={errores.presizerDistribucionCalibres}
+            >
+              <textarea
+                name="presizerDistribucionCalibres"
+                rows={2}
+                placeholder="ej. 24: 10%, 28: 25%, 32: 40%…"
+                defaultValue={inspeccion?.presizerDistribucionCalibres ?? ""}
+                className={campoClase(errores.presizerDistribucionCalibres)}
+              />
+            </Field>
+            <Field label="Distribución de color" error={errores.presizerDistribucionColor}>
+              <textarea
+                name="presizerDistribucionColor"
+                rows={2}
+                placeholder="ej. Choice: 60%, Comercial: 30%, Primera: 10%"
+                defaultValue={inspeccion?.presizerDistribucionColor ?? ""}
+                className={campoClase(errores.presizerDistribucionColor)}
+              />
             </Field>
           </div>
         </Card>

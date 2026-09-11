@@ -291,6 +291,63 @@ export default async function InspeccionDetallePage({
           </Card>
         ) : null}
 
+        {inspeccion.etapa === "PRESIZER" ? (
+          <Card>
+            <CardTitle>Control Presizer</CardTitle>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+              <Row label="N° de bin" value={inspeccion.presizerNumeroBin ?? "—"} mono />
+              <Row
+                label="% Falso rechazo"
+                value={
+                  inspeccion.presizerFalsoRechazoPct !== null
+                    ? `${inspeccion.presizerFalsoRechazoPct}%`
+                    : "—"
+                }
+                mono
+              />
+              <Row
+                label="% Falso aceptado (escape)"
+                value={
+                  inspeccion.presizerFalsoAceptadoPct !== null
+                    ? `${inspeccion.presizerFalsoAceptadoPct}%`
+                    : "—"
+                }
+                mono
+              />
+              <Row
+                label="% Impactos nuevos"
+                value={
+                  inspeccion.presizerImpactosNuevosPct !== null
+                    ? `${inspeccion.presizerImpactosNuevosPct}%`
+                    : "—"
+                }
+                mono
+              />
+              <Row label="Pérdida de pedicelo" value={inspeccion.presizerPerdidaPedicelo ?? "—"} />
+            </dl>
+            {inspeccion.presizerDistribucionCalibres || inspeccion.presizerDistribucionColor ? (
+              <div className="mt-3 grid grid-cols-1 gap-3 border-t border-border pt-3 sm:grid-cols-2">
+                {inspeccion.presizerDistribucionCalibres ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
+                      Distribución de calibres
+                    </p>
+                    <p className="mt-1 text-sm text-fg">{inspeccion.presizerDistribucionCalibres}</p>
+                  </div>
+                ) : null}
+                {inspeccion.presizerDistribucionColor ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.04em] text-fg-muted">
+                      Distribución de color
+                    </p>
+                    <p className="mt-1 text-sm text-fg">{inspeccion.presizerDistribucionColor}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </Card>
+        ) : null}
+
         {criterioObjecion ? (
           <Card className="border-state-danger/30 bg-state-danger-bg/40">
             <CardTitle>Criterio de objeción aplicado</CardTitle>

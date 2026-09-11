@@ -267,6 +267,13 @@ export const inspeccionSchema = z.object({
   hidrocoolerCloroLibrePpm: schemaNumero("El cloro libre", { min: 0, max: 1000 }),
   hidrocoolerTiempoExposicionMin: schemaNumero("El tiempo de exposición", { min: 0, max: 600 }),
   hidrocoolerTempPulpaPostC: schemaNumero("La T° de pulpa post-hidrocooler", { min: -10, max: 50 }),
+  presizerNumeroBin: textoOpcional("El n° de bin", { max: 50 }),
+  presizerDistribucionCalibres: textoOpcional("La distribución de calibres", { max: 1000 }),
+  presizerDistribucionColor: textoOpcional("La distribución de color", { max: 1000 }),
+  presizerFalsoRechazoPct: schemaNumero("El % de falso rechazo", { min: 0, max: 100 }),
+  presizerFalsoAceptadoPct: schemaNumero("El % de falso aceptado", { min: 0, max: 100 }),
+  presizerImpactosNuevosPct: schemaNumero("El % de impactos nuevos", { min: 0, max: 100 }),
+  presizerPerdidaPedicelo: textoOpcional("La pérdida de pedicelo", { max: 200 }),
   porcentajeRechazo: schemaNumero("El % de rechazo", { min: 0, max: 100 }),
   observaciones: textoOpcional("Las observaciones", { max: 4000 }),
 });
