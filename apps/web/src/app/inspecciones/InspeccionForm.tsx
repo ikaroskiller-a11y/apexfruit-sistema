@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState, type ReactNode } from "react";
+import { useActionState, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   AlertTriangle,
   Camera,
   ClipboardList,
+  CloudOff,
   Droplets,
   Gauge,
   MessageSquareText,
@@ -26,8 +27,27 @@ import { defectosPorEspecie, tamanoMuestraSugerido } from "@/lib/normas";
 import { Field, campoClase, FormErrorBanner } from "@/components/ui/FormField";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { ESTADO_INICIAL, type FormState } from "@/lib/validation";
+import { guardarBorrador } from "@/lib/borradores";
 import type { EspecieFruta, TipoDefecto } from "@prisma/client";
 import type { SesionUsuario } from "@/lib/auth";
+
+/**
+ * Los redirect() de Next dentro de un Server Action se implementan como una
+ * excepción especial con `digest` que empieza en "NEXT_REDIRECT" — hay que
+ * dejarla pasar (no es una falla real) para que la navegación post-guardado
+ * siga funcionando cuando la action se invoca a mano en vez de vía <form
+ * action>. Ver node_modules/next/dist/client/components/redirect-error.ts
+ * (no exportado en la API pública de next/navigation).
+ */
+function esErrorDeRedireccion(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
 
 type LoteOpcion = {
   id: string;
@@ -129,7 +149,51 @@ export default function InspeccionForm({
   /** Presente en modo edición; ausente al crear una inspección nueva. */
   inspeccion?: InspeccionExistente;
 }) {
-  const [state, formAction, pending] = useActionState(action, ESTADO_INICIAL);
+  // Si el envío falla por falta de señal (o cualquier otra falla real de
+  // red/transporte, a diferencia de un error de validación esperado que la
+  // action devuelve como FormState sin lanzar excepción), se guarda un
+  // borrador local en vez de perder lo cargado — ver src/lib/borradores.ts
+  // y la pantalla /inspecciones/borradores.
+  const [borradorGuardadoId, setBorradorGuardadoId] = useState<string | null>(null);
+
+  const construirResumenBorrador = useCallback(
+    (formData: FormData) => {
+      const loteIdEnviado = String(formData.get("loteId") ?? "");
+      const lote = lotes.find((l) => l.id === loteIdEnviado);
+      const etapaEnviada = String(formData.get("etapa") ?? "");
+      const etapaTexto =
+        etapaInspeccionOptions.find(([valor]) => valor === etapaEnviada)?.[1] ?? etapaEnviada;
+      const loteTexto = lote
+        ? `${lote.codigo} · ${especieLabels[lote.especie]} ${lote.variedad}`
+        : "Lote sin identificar";
+      return `${loteTexto} · ${etapaTexto}`;
+    },
+    [lotes]
+  );
+
+  const actionConSoporteOffline = useCallback(
+    async (prevState: FormState, formData: FormData): Promise<FormState> => {
+      const sinConexion = typeof navigator !== "undefined" && !navigator.onLine;
+      if (!sinConexion) {
+        try {
+          return await action(prevState, formData);
+        } catch (error) {
+          if (esErrorDeRedireccion(error)) throw error;
+          // Sigue abajo: falla real de red/transporte, no un error de
+          // validación (esos vuelven como FormState.error sin lanzar).
+        }
+      }
+      const id = await guardarBorrador(formData, {
+        actionKind: inspeccion ? "editar" : "crear",
+        resumen: construirResumenBorrador(formData),
+      });
+      setBorradorGuardadoId(id);
+      return ESTADO_INICIAL;
+    },
+    [action, inspeccion, construirResumenBorrador]
+  );
+
+  const [state, formAction, pending] = useActionState(actionConSoporteOffline, ESTADO_INICIAL);
   const errores = state.fieldErrors ?? {};
 
   // Un inspector registra sus propias inspecciones — no puede elegir a otra
@@ -243,6 +307,21 @@ export default function InspeccionForm({
       </p>
 
       <FormErrorBanner message={state.error} />
+
+      {borradorGuardadoId ? (
+        <div className="flex items-start gap-3 rounded-lg border border-state-warning bg-state-warning-bg px-4 py-3 text-sm text-state-warning">
+          <CloudOff className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <p>
+            No hay conexión: la inspección quedó guardada como{" "}
+            <strong>borrador local</strong> en este dispositivo. Se puede
+            reintentar el envío apenas vuelva la señal desde{" "}
+            <Link href="/inspecciones/borradores" className="font-semibold underline">
+              Borradores pendientes
+            </Link>
+            .
+          </p>
+        </div>
+      ) : null}
 
       <Card>
         <SectionTitle icon={ClipboardList}>Datos generales</SectionTitle>
@@ -543,8 +622,8 @@ export default function InspeccionForm({
         <Card>
           <SectionTitle icon={ScanLine}>Control Presizer</SectionTitle>
           <p className="mb-4 -mt-2 text-xs text-fg-muted">
-            °Brix y firmeza de sensores NIR se registran en la sección "Datos generales" de
-            arriba — no se duplican acá.
+            °Brix y firmeza de sensores NIR se registran en la sección &ldquo;Datos
+            generales&rdquo; de arriba — no se duplican acá.
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="N° de bin de entrada" error={errores.presizerNumeroBin}>

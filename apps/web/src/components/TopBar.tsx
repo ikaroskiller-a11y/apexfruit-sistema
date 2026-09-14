@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { salirSesion } from "@/app/login/actions";
 import { rolLabels } from "@/lib/labels";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import OnlineStatus from "@/components/OnlineStatus";
 import { LogOut } from "lucide-react";
 
 export default async function TopBar({
@@ -20,6 +21,7 @@ export default async function TopBar({
       <h1 className="text-2xl leading-[30px] font-semibold text-fg">{title}</h1>
 
       <div className="flex items-center gap-3">
+        <OnlineStatus />
         {actions}
         <ThemeToggle />
 

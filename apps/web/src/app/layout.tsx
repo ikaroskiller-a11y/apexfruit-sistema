@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { esAdmin, getCurrentUser } from "@/lib/auth";
 
 const plexSans = IBM_Plex_Sans({
@@ -24,6 +25,15 @@ export const metadata: Metadata = {
   title: "Apex Fruit · Control de calidad",
   description:
     "Sistema interno de inspección y control de calidad de fruta de exportación — Apex Fruit SPA",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Apex Fruit",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#164735",
 };
 
 // Clave de localStorage usada también por ThemeToggle.tsx
@@ -58,6 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
+        <ServiceWorkerRegister />
         <div className="flex min-h-screen flex-col md:flex-row">
           <Sidebar esAdmin={esAdmin(usuario)} />
           <div className="flex min-w-0 flex-1 flex-col">

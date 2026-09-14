@@ -189,9 +189,23 @@ menos en orden de prioridad:
 9. ~~**Paginación**~~ en inspecciones y lotes. Falta agregarla al listado de
    clientes si el volumen lo llega a justificar (hoy son solo 5).
 10. **Tests** — no hay tests todavía.
-11. **Modo offline / PWA** para inspección en terreno con conectividad
-    intermitente — ver `docs/research/requisitos.md` (recomendación de
-    plataforma) y `docs/research/usabilidad-control-calidad.md`.
+11. ~~**Modo offline / PWA básico.**~~ Hecho: instalable desde el navegador
+    (`src/app/manifest.ts`, íconos en `public/icons/`), con service worker
+    mínimo (`public/sw.js`) que cachea el shell ya visitado. El formulario de
+    inspección (`src/app/inspecciones/InspeccionForm.tsx`) guarda un
+    **borrador local en IndexedDB** (`src/lib/borradores.ts`) cuando no hay
+    señal — incluidas las fotos —, con reintento manual desde
+    `/inspecciones/borradores`. No implementado: uso completo de la app sin
+    conexión (dashboard, listados) ni sincronización automática en segundo
+    plano — ver `docs/research/requisitos.md` (recomendación de plataforma) y
+    `docs/research/usabilidad-control-calidad.md`. Next 16 trae un mecanismo
+    nativo experimental para esto (`experimental.useOffline`, ver
+    `node_modules/next/dist/docs/01-app/02-guides/offline-support.md`) que
+    mantiene un Server Action pendiente hasta que vuelve la conexión en vez
+    de fallar — no se adoptó todavía por ser experimental y requerir
+    Cache Components + Partial Prefetching; vale evaluarlo más adelante como
+    complemento (no reemplazo) del borrador persistente, ya que no sobrevive
+    a cerrar la pestaña/app.
 
 ## Sistema de diseño
 
